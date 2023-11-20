@@ -90,6 +90,7 @@ def calculate_vis(file: Path, wavelength: u.um,
 
 
 if __name__ == "__main__":
+    pionier_data = Path("/Users/scheuck/Data/reduced_data/hd142666/pionier")
     directory = Path("nChannels6/non_kraus")
     for index, file in enumerate(tqdm(list(directory.glob("*.fits")))):
         delete_add_ins(file)

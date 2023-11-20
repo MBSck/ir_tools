@@ -126,6 +126,8 @@ if __name__ == "__main__":
     # flip_phases(directory="mat_tools/nband")
     # get_chopped_flux(excluded=excluded)
     # average_total_flux("mat_tools/nband")
-    combine_chopped_non_chopped("mat_tools/lband")
-    calculate_vis("mat_tools/lband/combined",
+    matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
+    mat_tools_path = matisse_path / "mat_tools"
+    combine_chopped_non_chopped(matisse_path / "lband")
+    calculate_vis(matisse_path / "lband" / "combined",
                   margin=0.3, error=True, save=True)

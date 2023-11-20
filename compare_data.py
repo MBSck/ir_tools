@@ -7,6 +7,7 @@ from astropy.io import fits
 
 
 def read_file(file: Path) -> List:
+    """Reads the needed information from the file."""
     with fits.open(file) as hdul:
         wl = hdul["oi_wavelength"].data["eff_wave"]
         vis = hdul["oi_vis"].data["visamp"]
@@ -18,6 +19,22 @@ def read_file(file: Path) -> List:
 
 def get_y_limits(ylim: List[int], data: np.ndarray,
                  multiplier: float) -> List[int]:
+    """Gets the y-limits for the plots.
+
+    Parameters
+    ----------
+    ylim : list of int
+        The y-limits for the plot.
+    data : numpy.ndarray
+        The data to get the y-limits from.
+    multiplier : float
+        The multiplier for the y-limits to extend the bounds.
+
+    Returns
+    -------
+    y_limits : list of int
+        The y-limits for the plot.
+    """
     lower, upper = np.percentile(data, 75), np.percentile(data, 25)
     interquartile = upper-lower
     lower_bound = lower-interquartile*multiplier
@@ -28,7 +45,17 @@ def get_y_limits(ylim: List[int], data: np.ndarray,
 
 def compare_and_plot(file: Path, file_for_compare: Path,
                      cutoff_multiplier: Optional[int] = 1.5) -> None:
-    """Compares the data of two files."""
+    """Compares the data of two files.
+
+    Parameters
+    ----------
+    file : pathlib.Path
+        The first file to compare.
+    file_for_compare : pathlib.Path
+        The second file to compare.
+    cutoff_multiplier : int, optional
+        The multiplier for the y-limits to extend the bounds.
+    """
     data, data_other = read_file(file), read_file(file_for_compare)
     labels = ["Correlated fluxes (Jy)", "Visibilities (a.u.)"]
 
@@ -63,6 +90,7 @@ def compare_and_plot(file: Path, file_for_compare: Path,
 
 
 if __name__ == "__main__":
-    path_avg_oifits = Path("avg_oifits/lband/hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits")
-    path_mat_tools = Path("mat_tools/lband/hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits")
+    file_name = "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits"
+    path_avg_oifits = Path("avg_oifits/lband/") / file_name
+    path_mat_tools = Path("mat_tools/lband/") / file_name
     compare_and_plot(path_mat_tools, path_avg_oifits, cutoff_multiplier=10)
