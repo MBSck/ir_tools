@@ -20,7 +20,7 @@ def delete_add_ins(file: Path) -> None:
 def quadratic_error_propagation(data: np.ndarray, error: np.ndarray):
     """Calculates the standard deviation when taking the square root
     of the squared visibilities."""
-    return np.sqrt((data**2/data)**2*error**2)
+    return np.abs(0.5*error/np.sqrt(data))
 
 
 def calculate_vis(file: Path, wavelength: u.um,
@@ -90,8 +90,8 @@ def calculate_vis(file: Path, wavelength: u.um,
 
 
 if __name__ == "__main__":
-    pionier_data = Path("/Users/scheuck/Data/reduced_data/hd142666/pionier")
-    directory = Path("nChannels6/non_kraus")
+    pionier_dir = Path("/Users/scheuck/Data/reduced_data/hd142666/pionier")
+    directory = pionier_dir / "nChannels6" / "non_kraus"
     for index, file in enumerate(tqdm(list(directory.glob("*.fits")))):
         delete_add_ins(file)
         calculate_vis(file, 1.662, 2.06, 0.05, margin=0.3, error=True, save=True)

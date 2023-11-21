@@ -69,7 +69,7 @@ def combine_chopped_non_chopped(directory: Optional[Path] = None) -> None:
 
     for fits_file in tqdm(list(directory.glob("*HAWAII*INT.fits"))):
         chopped_file = fits_file.parent / fits_file.name.replace(".fits", "_CHOPPED.fits")
-        new_file = combined_dir / fits_file.name
+        new_file = combined_dir / f"{fits_file.stem}_combined.fits"
         shutil.copy(fits_file, new_file)
         if not chopped_file.exists():
             continue
@@ -101,7 +101,9 @@ def average_total_flux(directory: Optional[Path] = None) -> None:
             hdul.flush()
 
 
-def calculate_vis(directory: Optional[Path] = None, **kwargs) -> None:
+def calculate_vis(directory: Optional[Path] = None,
+                  propagate_fluxerr: Optional[bool] = True,
+                  **kwargs) -> None:
     """Calculates vis from corrflux."""
     directory = Path.cwd() if directory is None else Path(directory)
     vis_dir = directory / "vis"
@@ -110,7 +112,8 @@ def calculate_vis(directory: Optional[Path] = None, **kwargs) -> None:
 
     for fits_file in list(directory.glob("*.fits")):
         new_file = vis_dir / f"{fits_file.stem}_vis.fits"
-        calc_vis_from_corrflux(fits_file, fits_file, new_file)
+        calc_vis_from_corrflux(fits_file, fits_file, new_file,
+                               propagate_fluxerr=propagate_fluxerr)
         plot = Plotter(new_file, save_path=directory / "vis")
         unwrap = True if "AQUARIUS" in fits_file.name else False
         plot.add_uv().add_flux().add_vis2().add_cphases(unwrap=unwrap).plot(**kwargs)
@@ -128,6 +131,8 @@ if __name__ == "__main__":
     # average_total_flux("mat_tools/nband")
     matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
     mat_tools_path = matisse_path / "mat_tools"
-    combine_chopped_non_chopped(matisse_path / "lband")
-    calculate_vis(matisse_path / "lband" / "combined",
-                  margin=0.3, error=True, save=True)
+    combine_chopped_non_chopped(mat_tools_path / "lband")
+    calculate_vis(mat_tools_path / "lband" / "combined",
+                  margin=0.3, error=True, save=True, propagate_fluxerr=False)
+    calculate_vis(mat_tools_path / "nband",
+                  margin=0.3, error=True, save=True, propagate_fluxerr=False)
