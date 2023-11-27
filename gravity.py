@@ -6,11 +6,7 @@ import numpy as np
 from astropy.io import fits
 from tqdm import tqdm
 
-
-def quadratic_error_propagation(data: np.ndarray, error: np.ndarray):
-    """Calculates the standard deviation when taking the square root
-    of the squared visibilities."""
-    return np.sqrt((data**2/data)**2*error**2)
+from utils import quadratic_error_propagation
 
 
 def read_gravity_data(file: Path, index: Optional[int] = 10):

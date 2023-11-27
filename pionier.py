@@ -8,6 +8,8 @@ from astropy.table import QTable
 from astropy.io import fits
 from tqdm import tqdm
 
+from utils import quadratic_error_propagation
+
 
 def delete_add_ins(file: Path) -> None:
     """Deletes the oi_flux and oi_vis extensions."""
@@ -15,12 +17,6 @@ def delete_add_ins(file: Path) -> None:
         if "oi_vis" in hdul or "oi_flux" in hdul:
             del hdul["oi_vis"]
             del hdul["oi_flux"]
-
-
-def quadratic_error_propagation(data: np.ndarray, error: np.ndarray):
-    """Calculates the standard deviation when taking the square root
-    of the squared visibilities."""
-    return np.abs(0.5*error/np.sqrt(data))
 
 
 def calculate_vis(file: Path, wavelength: u.um,
