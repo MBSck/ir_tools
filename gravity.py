@@ -37,6 +37,13 @@ def read_gravity_data(file: Path, index: Optional[int] = 10):
     return wave, spectre, visamp, visphi, closure, ucoord, vcoord, base, triplet
 
 
+def calibrate_gravity_flux(target: Path, calibrator: Path,
+                           flux_model: Path, index: Optional[int] = 10) -> None:
+    """Calibrates the flux of the GRAVITY data."""
+    pass
+
+
+
 def make_vis_gravity_files(directory: Path) -> None:
     """Makes a set of gravity files where the vis is set to be the vis2
     to make it easier to handle for the fitting."""
