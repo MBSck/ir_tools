@@ -2,11 +2,14 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+import astropy.units as u
 import numpy as np
 from astropy.io import fits
 from tqdm import tqdm
+from uncertainties import unumpy
+from ppdmod.utils import interp1d, opacity_to_matisse_opacity
 
-from utils import quadratic_error_propagation
+from utils import load_flux_model
 
 
 def read_gravity_data(file: Path, index: Optional[int] = 10):
@@ -17,6 +20,9 @@ def read_gravity_data(file: Path, index: Optional[int] = 10):
     index 10 = SC ; 20 = FT ; 11,12 = SC_POL ; 21,22 = FT_POL.
     """
     with fits.open(file) as hdul:
+        header = hdul[0].header
+        for i in range(1, 4):
+            print(header[f"hierarch eso det{i} seq1 dit"])
         wave = hdul['oi_wavelength', index].data['eff_wave']*1e6
         spectre = np.mean(hdul['oi_flux', index].data['flux'], 0)
         visamp = hdul['oi_vis', index].data['visamp']
@@ -33,11 +39,69 @@ def read_gravity_data(file: Path, index: Optional[int] = 10):
     return wave, spectre, visamp, visphi, closure, ucoord, vcoord, base, triplet
 
 
-def calibrate_gravity_flux(target: Path, calibrator: Path,
-                           flux_model: Path, index: Optional[int] = 10) -> None:
-    """Calibrates the flux of the GRAVITY data."""
-    pass
+def get_model_flux(wavelength: np.ndarray, flux_file: Path) -> np.ndarray:
+    """Bins the model flux to match the data."""
+    model_wl, model_flux = load_flux_model(flux_file)
+    return opacity_to_matisse_opacity(
+            wavelength*u.um, wavelength_grid=model_wl*u.um,
+            opacity=model_flux*u.Jy).value*u.Jy
 
+
+def calibrate_gravity_flux(target: Path, calibrator: Path, flux_file: Path,
+                           output_dir: Optional[Path] = None) -> None:
+    """Calibrates the flux of the GRAVITY data."""
+    output_dir = Path("calibrated") if output_dir is None else output_dir
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True)
+
+    new_file = output_dir / f"{target.stem}_flux_calibrated.fits"
+    shutil.copy(target, new_file)
+    with fits.open(target, "readonly") as hdul:
+        wave_sc = hdul['oi_wavelength', 10].data['eff_wave']*1e6
+        wave_ft = hdul['oi_wavelength', 20].data['eff_wave']*1e6
+
+        flux_target_sc = hdul['oi_flux', 10].data['flux']
+        flux_target_sc_err = hdul['oi_flux', 10].data['fluxerr']
+        sta_index_target_sc = hdul['oi_flux', 10].data['sta_index']
+
+        flux_target_ft = hdul['oi_flux', 20].data['flux']
+        flux_target_ft_err = hdul['oi_flux', 20].data['fluxerr']
+        sta_index_target_ft = hdul['oi_flux', 20].data['sta_index']
+
+    with fits.open(calibrator, "readonly") as hdul:
+        flux_cal_sc = hdul['oi_flux', 10].data['flux']
+        flux_cal_sc_err = hdul['oi_flux', 10].data['fluxerr']
+        sta_index_cal_sc = hdul['oi_flux', 10].data['sta_index']
+
+        flux_cal_ft = hdul['oi_flux', 20].data['flux']
+        flux_cal_ft_err = hdul['oi_flux', 20].data['fluxerr']
+        sta_index_cal_ft = hdul['oi_flux', 20].data['sta_index']
+
+    flux_model_sc = get_model_flux(wave_sc, flux_file)
+    flux_model_ft = get_model_flux(wave_ft, flux_file)
+    flux_sc = unumpy.umatrix(flux_target_sc, flux_target_sc_err)/\
+        unumpy.umatrix(flux_cal_sc, flux_cal_sc_err)
+    flux_ft = unumpy.umatrix(flux_target_ft, flux_target_ft_err)/\
+        unumpy.umatrix(flux_cal_ft, flux_cal_ft_err)
+    cal_flux_sc, cal_flux_sc_err = map(lambda x: np.array(x.tolist())*flux_model_sc,
+                                       (unumpy.nominal_values(flux_sc),
+                                        unumpy.std_devs(flux_sc)))
+    cal_flux_ft, cal_flux_ft_err = map(lambda x: np.array(x.tolist())*flux_model_ft,
+                                       (unumpy.nominal_values(flux_ft),
+                                        unumpy.std_devs(flux_ft)))
+
+    with fits.open(new_file, "update") as hdul:
+        hdul["oi_flux", 10].data["flux"] = cal_flux_sc
+        hdul["oi_flux", 10].data["fluxerr"] = cal_flux_sc_err
+        hdul["oi_flux", 20].data["flux"] = cal_flux_ft
+        hdul["oi_flux", 20].data["fluxerr"] = cal_flux_ft_err
+        hdul["oi_flux", 10].columns[4].name = "fluxdata".upper()
+        hdul["oi_flux", 10].columns[4].unit = "Jy"
+        hdul["oi_flux", 10].columns[5].unit = "Jy"
+        hdul["oi_flux", 20].columns[4].name = "fluxdata".upper()
+        hdul["oi_flux", 20].columns[4].unit = "Jy"
+        hdul["oi_flux", 20].columns[5].unit = "Jy"
+        hdul.flush()
 
 
 def make_vis_gravity_files(directory: Path) -> None:
@@ -58,5 +122,11 @@ def make_vis_gravity_files(directory: Path) -> None:
 
 if __name__ == "__main__":
     path = Path("fits") / "GRAVI.2018-06-16T03%3A22%3A27.798_singlescivis_singlesciviscalibrated.fits"
-    # read_gravity_data(path)
-    # make_vis_gravity_files(Path("fits"))
+    flux_file = Path("/Users/scheuck/Data/flux_data/hd148605/HD148605_stellar_model.txt")
+    sci_dir = Path("/Users/scheuck/Data/reduced_data/hd142666/gravity/fits")
+    calibrator = Path("/Users/scheuck/Data/reduced_data/hd142666/gravity/calibrator/HD142666-calibrator.fits")
+    for fits_file in tqdm(list(sci_dir.glob("*fits"))):
+        calibrate_gravity_flux(fits_file, calibrator, flux_file, output_dir=sci_dir / "calibrated")
+        # print(fits_file.name)
+        # read_gravity_data(fits_file)
+    # make_vis_gravity_files(Path())

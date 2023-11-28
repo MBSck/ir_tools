@@ -88,8 +88,13 @@ def combine_chopped_non_chopped(directory: Optional[Path] = None) -> None:
 def average_total_flux(directory: Optional[Path] = None) -> None:
     """Averages toegether the fluxes for the 'mat_tools' reduction."""
     directory = Path.cwd() if directory is None else Path(directory)
+    flux_dir = directory / "flux"
+    if not flux_dir.exists():
+        flux_dir.mkdir(parents=True)
     for fits_file in list(directory.glob("*.fits")):
-        with fits.open(fits_file, "update") as hdul:
+        new_file = flux_dir / f"{fits_file.stem}_avg.fits"
+        shutil.copy(fits_file, new_file)
+        with fits.open(new_file, "update") as hdul:
             oi_flux = hdul["oi_flux"].data
             flux, fluxerr = oi_flux["fluxdata"], oi_flux["fluxerr"]
             avg_flux = np.mean(flux, axis=0)
@@ -129,10 +134,10 @@ if __name__ == "__main__":
     # flip_phases(directory="mat_tools/nband")
     # get_chopped_flux(excluded=excluded)
     # average_total_flux("mat_tools/nband")
+    directory = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/mat_tools/test/2022-04-21")
     matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
     mat_tools_path = matisse_path / "mat_tools"
-    combine_chopped_non_chopped(mat_tools_path / "lband")
-    calculate_vis(mat_tools_path / "lband" / "combined",
-                  margin=0.3, error=True, save=True, propagate_fluxerr=False)
-    calculate_vis(mat_tools_path / "nband",
-                  margin=0.3, error=True, save=True, propagate_fluxerr=False)
+    # combine_chopped_non_chopped(mat_tools_path / "lband")
+    average_total_flux(directory)
+    calculate_vis(directory / "flux", margin=0.3, error=True,
+                  save=True, propagate_fluxerr=False)
