@@ -7,7 +7,7 @@ import numpy as np
 from astropy.io import fits
 from tqdm import tqdm
 from uncertainties import unumpy
-from ppdmod.utils import interp1d, opacity_to_matisse_opacity
+from ppdmod.utils import opacity_to_matisse_opacity
 
 from utils import load_flux_model
 
@@ -21,8 +21,7 @@ def read_gravity_data(file: Path, index: Optional[int] = 10):
     """
     with fits.open(file) as hdul:
         header = hdul[0].header
-        for i in range(1, 4):
-            print(header[f"hierarch eso det{i} seq1 dit"])
+        print([header[f"hierarch eso det{i} seq1 dit"] for i in range(1, 4)])
         wave = hdul['oi_wavelength', index].data['eff_wave']*1e6
         spectre = np.mean(hdul['oi_flux', index].data['flux'], 0)
         visamp = hdul['oi_vis', index].data['visamp']
@@ -126,7 +125,7 @@ if __name__ == "__main__":
     sci_dir = Path("/Users/scheuck/Data/reduced_data/hd142666/gravity/fits")
     calibrator = Path("/Users/scheuck/Data/reduced_data/hd142666/gravity/calibrator/HD142666-calibrator.fits")
     for fits_file in tqdm(list(sci_dir.glob("*fits"))):
-        calibrate_gravity_flux(fits_file, calibrator, flux_file, output_dir=sci_dir / "calibrated")
         # print(fits_file.name)
+        calibrate_gravity_flux(fits_file, calibrator, flux_file, output_dir=sci_dir / "calibrated")
         # read_gravity_data(fits_file)
     # make_vis_gravity_files(Path())
