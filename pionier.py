@@ -7,8 +7,7 @@ from matadrs.utils.plot import Plotter
 from astropy.table import QTable
 from astropy.io import fits
 from tqdm import tqdm
-
-from utils import quadratic_error_propagation
+from uncertainties import unumpy
 
 
 def delete_add_ins(file: Path) -> None:

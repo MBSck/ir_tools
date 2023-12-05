@@ -1,3 +1,14 @@
 *.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.mov
+*.avi
+*.mpg
+*.mpeg
+*.mkv
+*.webm
 *xlsx
 __pycache__/

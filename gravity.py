@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy as np
 from astropy.io import fits
+from matadrs.utils.plot import Plotter
 from tqdm import tqdm
 from uncertainties import unumpy
 
@@ -107,6 +108,8 @@ def make_vis_gravity_files(directory: Path) -> None:
             hdul["oi_vis2"].columns["visamp"].name = "vis2data".upper()
             hdul["oi_vis2"].columns["visamperr"].name = "vis2err".upper()
             hdul.flush()
+        plot = Plotter(new_file, save_path=new_file.parent)
+        plot.add_mosaic().plot(margin=0.3, error=True, save=True)
 
 
 if __name__ == "__main__":
@@ -114,8 +117,13 @@ if __name__ == "__main__":
     flux_file = Path("/Users/scheuck/Data/flux_data/hd148605/HD148605_stellar_model.txt")
     sci_dir = Path("/Users/scheuck/Data/reduced_data/hd142666/gravity/fits")
     calibrator = Path("/Users/scheuck/Data/reduced_data/hd142666/gravity/calibrator/HD142666-calibrator.fits")
-    for fits_file in tqdm(list(sci_dir.glob("*fits"))):
-        # print(fits_file.name)
-        calibrate_gravity_flux(fits_file, calibrator, flux_file, output_dir=sci_dir / "calibrated")
-        # read_gravity_data(fits_file)
+    # for fits_file in tqdm(list(sci_dir.glob("*fits"))):
+    # print(fits_file.name)
+    # calibrate_gravity_flux(fits_file, calibrator, flux_file, output_dir=sci_dir / "calibrated")
+    # read_gravity_data(fits_file)
     # make_vis_gravity_files(Path())
+    for fits_file in list(sci_dir.glob("*.fits")):
+        plot = Plotter(fits_file, save_path=fits_file.parent)
+        plot.add_mosaic().plot(margin=0.3, error=True, save=True)
+    make_vis_gravity_files(sci_dir)
+    average_total_flux(sci_dir / "calibrated", margin=0.3, error=True, save=True)
