@@ -2,14 +2,12 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-import astropy.units as u
 import numpy as np
 from astropy.io import fits
 from tqdm import tqdm
 from uncertainties import unumpy
-from ppdmod.utils import opacity_to_matisse_opacity
 
-from utils import load_flux_model
+from utils import average_total_flux, get_model_flux
 
 
 def read_gravity_data(file: Path, index: Optional[int] = 10):
@@ -36,14 +34,6 @@ def read_gravity_data(file: Path, index: Optional[int] = 10):
         base = [dicname[i]+'-'+dicname[j] for i, j in hdul['oi_vis', index].data['sta_index']]
         triplet = [dicname[i] + '-'+dicname[j]+'-'+dicname[k] for i, j, k in hdul['oi_t3', index].data['sta_index']]
     return wave, spectre, visamp, visphi, closure, ucoord, vcoord, base, triplet
-
-
-def get_model_flux(wavelength: np.ndarray, flux_file: Path) -> np.ndarray:
-    """Bins the model flux to match the data."""
-    model_wl, model_flux = load_flux_model(flux_file)
-    return opacity_to_matisse_opacity(
-            wavelength*u.um, wavelength_grid=model_wl*u.um,
-            opacity=model_flux*u.Jy).value*u.Jy
 
 
 def calibrate_gravity_flux(target: Path, calibrator: Path, flux_file: Path,
