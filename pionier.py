@@ -87,6 +87,8 @@ def calculate_vis(file: Path, wavelength: u.um,
 if __name__ == "__main__":
     pionier_dir = Path("/Users/scheuck/Data/reduced_data/hd142666/pionier")
     directory = pionier_dir / "nChannels6" / "non_kraus"
-    for index, file in enumerate(tqdm(list(directory.glob("*.fits")))):
-        delete_add_ins(file)
-        calculate_vis(file, 1.662, 2.06, 0.05, margin=0.3, error=True, save=True)
+    for index, fits_file in enumerate(tqdm(list(directory.glob("*.fits")))):
+        # delete_add_ins(fits_file)
+        # calculate_vis(fits_file, 1.662, 2.06, 0.05, margin=0.3, error=True, save=True)
+        plot = Plotter(fits_file, save_path=fits_file.parent)
+        plot.add_mosaic().plot(margin=0.3, error=True, save=True)
