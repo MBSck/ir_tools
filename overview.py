@@ -8,7 +8,7 @@ from ppdmod.options import OPTIONS
 
 if __name__ == "__main__":
     fitting_dir = Path("/Users/scheuck/Data/reduced_data/hd142666/fitting_data")
-    OPTIONS["fit.data"] = ["vis2", "t3phi"]
+    OPTIONS["fit.data"] = ["flux", "vis2", "t3phi"]
     OPTIONS["fit.wavelengths"] = [1.6, 2.25, 3.5, 8, 8.5,
                                   9, 10, 11.3, 12.5]*u.um
     OPTIONS["data.binning.window"] = 0.2
