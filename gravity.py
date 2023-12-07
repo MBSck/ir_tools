@@ -97,18 +97,18 @@ def calibrate_gravity_flux(target: Path, calibrator: Path, flux_file: Path,
 def make_vis_gravity_files(directory: Path) -> None:
     """Makes a set of gravity files where the vis is set to be the vis2
     to make it easier to handle for the fitting."""
-    vis_dir = directory / "vis"
-    if not vis_dir.exists():
-        vis_dir.mkdir(parents=True, exist_ok=True)
+    plot_dir = directory / "vis" / "plots"
+    if not plot_dir.exists():
+        plot_dir.mkdir(parents=True, exist_ok=True)
     for fits_file in tqdm(list(directory.glob("*.fits"))):
-        new_file = vis_dir / f"{fits_file.stem}_vis.fits"
+        new_file = plot_dir.parent / f"{fits_file.stem}_vis.fits"
         shutil.copy(fits_file, new_file)
         with fits.open(new_file, "update") as hdul:
-            hdul["oi_vis2"].data = hdul["oi_vis"].data
+            hdul["oi_vis2"].data = hdul["oi_vis"].data.copy()
             hdul["oi_vis2"].columns["visamp"].name = "vis2data".upper()
             hdul["oi_vis2"].columns["visamperr"].name = "vis2err".upper()
             hdul.flush()
-        plot = Plotter(new_file, save_path=new_file.parent)
+        plot = Plotter(new_file, save_path=plot_dir)
         plot.add_mosaic().plot(margin=0.3, error=True, save=True)
 
 
@@ -122,8 +122,8 @@ if __name__ == "__main__":
     # calibrate_gravity_flux(fits_file, calibrator, flux_file, output_dir=sci_dir / "calibrated")
     # read_gravity_data(fits_file)
     # make_vis_gravity_files(Path())
-    for fits_file in list(sci_dir.glob("*.fits")):
-        plot = Plotter(fits_file, save_path=fits_file.parent)
-        plot.add_mosaic().plot(margin=0.3, error=True, save=True)
-    make_vis_gravity_files(sci_dir)
-    average_total_flux(sci_dir / "calibrated", margin=0.3, error=True, save=True)
+    # for fits_file in list((sci_dir / "calibrated").glob("*.fits")):
+    #     plot = Plotter(fits_file, save_path=fits_file.parent)
+    #     plot.add_mosaic().plot(margin=0.3, error=True, save=True)
+    # average_total_flux(sci_dir / "calibrated", margin=0.3, error=True, save=True)
+    make_vis_gravity_files(sci_dir / "calibrated" / "flux")

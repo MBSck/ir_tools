@@ -25,11 +25,15 @@ def get_model_flux(wavelength: np.ndarray, flux_file: Path) -> np.ndarray:
 def average_total_flux(directory: Optional[Path] = None, **kwargs) -> None:
     """Averages toegether the fluxes for the 'mat_tools' reduction."""
     directory = Path.cwd() if directory is None else Path(directory)
-    flux_dir = directory / "flux"
-    if not flux_dir.exists():
-        flux_dir.mkdir(parents=True)
+    plot_dir = directory / "flux" / "plots"
+    if not plot_dir.exists():
+        plot_dir.mkdir(parents=True)
     for fits_file in list(directory.glob("*.fits")):
-        new_file = flux_dir / f"{fits_file.stem}_flux_avg.fits"
+        with fits.open(fits_file, "readonly") as hdul:
+            if "OI_FLUX" not in hdul:
+                continue
+
+        new_file = plot_dir.parent / f"{fits_file.stem}_flux_avg.fits"
         shutil.copy(fits_file, new_file)
         with fits.open(new_file, "update") as hdul:
             oi_flux = hdul["oi_flux"].data
@@ -41,7 +45,7 @@ def average_total_flux(directory: Optional[Path] = None, **kwargs) -> None:
             hdul["oi_flux"].data["fluxdata"] = avg_flux
             hdul["oi_flux"].data["fluxerr"] = avg_fluxerr
             hdul.flush()
-        plot = Plotter(new_file, save_path=new_file.parent)
+        plot = Plotter(new_file, save_path=plot_dir)
         unwrap = True if "AQUARIUS" in fits_file.name else False
         plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
