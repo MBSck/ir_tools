@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import astropy.units as u
+from matadrs.utils.plot import Plotter
 from ppdmod.data import set_data
 from ppdmod.plot import plot_overview
 from ppdmod.options import OPTIONS
@@ -16,3 +17,6 @@ if __name__ == "__main__":
     set_data(fits_files)
     plot_overview(title="Data Overview",
                   savefig="data_overview.pdf")
+    uv_plotter = Plotter(fits_files, plot_name="uv.pdf")
+    uv_plotter.add_uv(color_grouping="instrument",
+                      make_tracks=True).plot(save=True)
