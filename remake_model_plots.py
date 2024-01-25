@@ -84,7 +84,6 @@ OPTIONS["model.constant_params"] = {
 # inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
-rout = Parameter(**STANDARD_PARAMETERS["rout"])
 a = Parameter(**STANDARD_PARAMETERS["a"])
 phi = Parameter(**STANDARD_PARAMETERS["phi"])
 p = Parameter(**STANDARD_PARAMETERS["p"])
@@ -102,8 +101,6 @@ p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 a.set(min=0., max=1.)
 phi.set(min=0, max=360)
-
-rout.free = True
 
 outer_ring = {"rin": rin, "a": a, "phi": phi,
               "inner_sigma": inner_sigma, "p": p}
@@ -141,6 +138,10 @@ OPTIONS["model.components_and_params"] = [
     ["AnalyticalAsymmetricGreyBody", outer_ring],
 ]
 
+# component_labels = ["Star", "Inner Ring", "Outer Ring"]
+# component_labels = ["Star", "Inner Ring"]
+component_labels = ["Star", "Outer Ring"]
+
 # labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 labels = outer_ring_labels + shared_params_labels
 # labels = inner_ring_labels + shared_params_labels
@@ -150,17 +151,20 @@ OPTIONS["model.gridtype"] = "logarithmic"
 
 OPTIONS["fit.method"] = "emcee"
 
-result_dir = Path("/Users/scheuck/Data/model_results/2024-01-16/results_model_0:50:40")
+result_dir = Path("/Users/scheuck/Data/model_results/2024-01-21/results_model_23:51:13")
 # OPTIONS["plot.color.background"] = "black"
 
 if __name__ == "__main__":
-    theta = np.load(result_dir / "best_fit_params.npy")
+    sampler = np.load(result_dir / "sampler.npy", allow_pickle=True).tolist()
+    theta = fitting.get_best_fit(sampler, discard=2500, method="quantile")
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = custom_components.assemble_components(
             components_and_params, shared_params)
-    # component_labels = ["Star", "Inner Ring", "Outer Ring"]
-    component_labels = ["Star", "Inner Ring"]
-    # component_labels = ["Star", "Outer Ring"]
+    theta2 = fitting.get_best_fit(sampler, discard=2500, method="quantile")
+    components_and_params2, shared_params2 = fitting.set_params_from_theta(theta2)
+    components2 = custom_components.assemble_components(
+            components_and_params, shared_params)
+    breakpoint()
 
     # HACK: This is to include innermost radius for rn.
     innermost_radius = components[1].params["rin"]
@@ -175,13 +179,13 @@ if __name__ == "__main__":
     #         savefits=result_dir / "model.fits",
     #         options=OPTIONS, object_name="HD 142666")
 
-    plot.plot_fit(
-            new_params["sh_elong"], new_params["sh_pa"],
-            components=components,
-            savefig=result_dir / "fit_results.pdf")
-
     # plot.plot_fit(
     #         new_params["sh_elong"], new_params["sh_pa"],
     #         components=components,
-    #         savefig=result_dir / "fit_results.pdf",
-    #         wavelength_range=[8, 13]*u.um, ylimits={"vis2": [0, 0.2]})
+    #         savefig=result_dir / "fit_results.pdf")
+
+    plot.plot_fit(
+            new_params["sh_elong"], new_params["sh_pa"],
+            components=components,
+            savefig=result_dir / "fit_results.pdf",
+            wavelength_range=[8, 13]*u.um, ylimits={"vis2": [0, 0.2]})

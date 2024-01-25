@@ -3,7 +3,7 @@ from pathlib import Path
 import astropy.units as u
 from matadrs.utils.plot import Plotter
 from ppdmod.data import set_data
-from ppdmod.plot import plot_model, plot_overview
+from ppdmod.plot import plot_model, plot_overview, plot_target
 from ppdmod.options import OPTIONS
 
 
@@ -18,8 +18,12 @@ if __name__ == "__main__":
     fits_files = list(fitting_dir.glob("*.fits"))
     # set_data(fits_files)
     # plot_overview(savefig="data_overview.png")
-    plot_model(model_file, data_type="image", wavelength=2.25,
-               pixel_size=0.1, savefig="image225.png", zoom=5)
+    target = "hd142527"
+    plot_target(target, wavelength_range=[1, 13]*u.um,
+                title=target.upper(),
+                filters=["2MASS", "WISE"], savefig=f"{target}.pdf")
+    # plot_model(model_file, data_type="image", wavelength=2.25,
+    #            pixel_size=0.1, savefig="image225.png", zoom=5)
     # plot_model(model_file, data_type="image", wavelength=3.5,
     #            pixel_size=0.1, savefig="image35.png", zoom=10)
     # plot_model(model_file, data_type="image", wavelength=10.,
