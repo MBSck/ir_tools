@@ -11,5 +11,6 @@
 *.mpeg
 *.mkv
 *.webm
-*xlsx
+*.xlsx
+*.csv
 __pycache__/
