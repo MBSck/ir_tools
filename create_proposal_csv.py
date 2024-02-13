@@ -11,7 +11,7 @@ ROW_COLUMNS = ["Target id", "RAHours", "RAMinutes", "RASeconds",
 OBSERVATION_MODES = {"MATISSE": "LR-LM&MR-LM&HR-L&LR-N&HR-N",
                      "VISIR": "VISIR spec-LR"}
 
-TELESCOPES = {"VISIR": "UT3"}
+TELESCOPES = {"VISIR": "UT2"}
 
 
 def create_proposal_csv(planning_file: Path,
