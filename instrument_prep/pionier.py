@@ -7,7 +7,6 @@ from matadrs.utils.plot import Plotter
 from astropy.table import QTable
 from astropy.io import fits
 from tqdm import tqdm
-from uncertainties import unumpy
 
 
 def delete_add_ins(file: Path) -> None:
@@ -24,7 +23,7 @@ def calculate_vis(file: Path, wavelength: u.um,
     """Calculates the correlated fluxes from the
     squared visibilities and a total flux.
 
-    Also add the total flux to the file.
+    Also adds the total flux to the file.
     """
     delete_add_ins(file)
     if not (dir := file.parent / "vis").exists():
