@@ -5,7 +5,6 @@ import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.modeling.models import BlackBody
-from astropy.visualization import quantity_support
 
 
 def create_sed(flux_files: List[Path],
@@ -28,7 +27,6 @@ def calc_blackbody(temperature: u.K, wavelengths: u.um, weight: u.mas) -> np.nda
 
 
 def plot_sed(sed_file: Path) -> None:
-    quantity_support()
     _, axarr = plt.subplots(2, 3, figsize=(15, 10))
     wl, flux = np.loadtxt(sed_file, unpack=True, comments="#", usecols=(1, 2))
     wl, flux = wl*u.AA, (flux*u.erg/u.s/u.cm**2/u.AA)
@@ -67,14 +65,19 @@ def plot_sed(sed_file: Path) -> None:
 
             axarr[index_wl, index].set_xlabel(rf"$\lambda$ ({label})")
                 
-
     plt.savefig("sed.pdf", format="pdf")
+    plt.close()
 
 
 if __name__ == "__main__":
     flux_dir = Path("/Users/scheuck/Data/flux_data/hd142666/")
-    plot_sed(flux_dir / "HD+142666.sed.dat")
-    breakpoint()
+    sed_file = flux_dir / "HD+142666.sed.dat" 
+    # plot_sed(sed_file)
+    wl, flux = np.loadtxt(sed_file, unpack=True, comments="#", usecols=(1, 2))
+    wl, flux = (wl*u.AA).to(u.um), (flux*u.erg/u.s/u.cm**2/u.AA).to(u.erg/u.s/u.cm**2/u.um)
+    ind = np.where((wl > (1*u.um).to(u.AA)) & (wl < (14*u.um).to(u.AA)))
+    wl, flux = wl[ind], flux[ind]
+    flux *= wl
 
     wl_star, flux_star, *_ = np.loadtxt(flux_dir / "HD142666_stellar_model.txt.gz",
                                         comments="#", unpack=True)
@@ -83,21 +86,21 @@ if __name__ == "__main__":
     flux_star = np.interp(wl, wl_star, flux_star)
     flux -= flux_star
 
-    temp1, temp2 = 1500, 350
-    bb1 = calc_blackbody(temp1*u.K, wl, 0.67*u.mas)
-    bb2 = calc_blackbody(temp2*u.K, wl, 9.6*u.mas)
-    bb = bb1 + bb2
+    temps, ratios = [1500, 1100, 900], [0.72, 1.2, 2.95]
+    bbs = [calc_blackbody(temp*u.K, wl, ratio*u.mas) for temp, ratio in zip(temps, ratios)]
 
     nband = np.where((wl > 8.0*u.um) & (wl < 14.0*u.um))
-    inner_contribution = ((bb1/flux).value*100)[nband]
-
+    inner_contribution = (np.sum(bbs, axis=0)/flux.value)[nband]*100
+    print(inner_contribution)
     plt.scatter(wl.value, flux.value, s=5, alpha=0.6, label="Data")
-    plt.plot(wl.value, bb1.value, c="r", label=f"{temp1} K")
-    plt.plot(wl.value, bb2.value, c="orange", label=f"{temp2} K")
-    plt.plot(wl.value, bb.value, c="k", label="Combined")
-    plt.legend()
+    for index, bb in enumerate(bbs):
+        plt.plot(wl.value, bb.value, label=f"{temps[index]} K")
+    plt.plot(wl.value, np.sum(bbs, axis=0), label=f"Combined")
 
     plt.xlabel(r"Wavelength ($\mu$m)")
     plt.ylabel(r"$\lambda F_{\lambda}$ (erg s$^{-1}$ cm$^{-2}$)")
+    plt.ylim([0, None])
+    plt.legend()
+
     plt.savefig("lambda_flux_lambda.pdf", format="pdf")
     plt.close()
