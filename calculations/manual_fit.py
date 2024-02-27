@@ -97,7 +97,7 @@ if __name__ == "__main__":
     flux_star = np.interp(wl, wl_star, flux_star)
     flux -= flux_star
 
-    temps, ratios = [2100, 1500, 1100, 900, 500], [0.15, 0.68, 0.8, 3.17, 4.1]
+    temps, ratios = [2100, 1500, 1100, 900, 500], [0.15, 0.7, 1.2, 2.3, 7]
     wl_range = np.linspace(np.min(wl.value), np.max(wl.value), 300)
     bbs = [calc_blackbody(temp*u.K, wl_range*u.um, ratio*u.mas) for temp, ratio in zip(temps, ratios)]
 
