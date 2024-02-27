@@ -13,4 +13,5 @@
 *.webm
 *.xlsx
 *.csv
+*.npy
 __pycache__/
