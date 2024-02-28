@@ -52,7 +52,7 @@ def query_catalog(object_name: str, catalog: str,
 
         for w_entry, w_err_entry, iso in zip(w, w_err, isot):
             key, time = iso.split("T")
-            data[key]["time"].append(time[:-4])
+            data[key]["time"].append(time)
             data[key]["value"].append(w_entry)
             data[key]["error"].append(w_err_entry)
     return {k: {ki: np.array(vi) for ki, vi in v.items()} for k, v in data.items()}
@@ -73,10 +73,10 @@ def plot_multi_epoch(object_name: str) -> None:
         ax.set_xlabel("Time (UTC)")
         # ax.set_ylim([0, None])
         ax.set_title(f"{object_name.upper()} WISE{index}")
-        ax.tick_params(axis="x", labelsize=8, rotation=45)
+        ax.tick_params(axis="x", labelsize=6, rotation=45)
         ax.legend()
 
-    plt.savefig("time_variability.pdf", format="pdf")
+    plt.savefig(f"{object_name}_time_variability.pdf", format="pdf")
 
 
 if __name__ == "__main__":
@@ -92,4 +92,4 @@ if __name__ == "__main__":
     # pprint({k:v.description for k,v in catalog_list.items()})
     
     # catalogs = Irsa.list_catalogs()
-    plot_multi_epoch("hd142666")
+    plot_multi_epoch("hd142527")
