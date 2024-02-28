@@ -72,8 +72,8 @@ def plot_sed(flux_dir: Path) -> Tuple[np.ndarray, np.ndarray]:
     flux *= wl
 
     # data = ["HD_142666_timmi2.txt", "10402847.ss"]
-    # data = ["HD_142666_timmi2.txt"]
-    data = ["HD142666_spitzer_psf.dat"]
+    data = ["HD_142666_timmi2.txt"]
+    # data = ["HD142666_spitzer_psf.dat"]
     for dataset in data:
         wl_data, flux_data, *_ = np.loadtxt(flux_dir / dataset, unpack=True, comments="#", skiprows=1)
         wl_data, flux_data = wl_data*u.um, (flux_data*u.Jy).to(u.erg/u.s/u.cm**2/u.Hz)

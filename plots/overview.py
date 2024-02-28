@@ -36,13 +36,6 @@ if __name__ == "__main__":
     # plot_model(model_file, data_type="density", savefig="density.png")
     # plot_model(model_file, data_type="thickness", savefig="thickness.png")
     # plot_model(model_file, data_type="depth", factor=0.505, savefig="depth.png")
-    # uv_plotter = Plotter(fits_files, plot_name="uv.pdf")
-    # uv_plotter.add_uv(color_grouping="instrument",
-    #                   make_tracks=True).plot(save=True)
-    ut_files = list(fitting_dir.glob("*HAW*.fits"))[:1]
-    uv_plotter = Plotter(list(ut_files), plot_name="uv_mosaic.pdf")
-    uv_plotter.add_mosaic().plot(save=True, error=True)
-    # uv_plotter.add_uv(color_grouping="file", make_tracks=True).plot(save=True)
     # path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/1.7.6/mat_tools/lband")
     # file = path / "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_HAWAII-2RG_FINAL_TARGET_INT.fits"
     # plotter = Plotter(file, plot_name="test.pdf")

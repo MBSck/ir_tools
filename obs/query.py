@@ -7,6 +7,7 @@ from astropy.time import Time
 from astroquery.ipac.irsa import Irsa
 from astroquery.vizier import Vizier
 
+
 def wise_to_flux(flux: float, lband: bool):
     if lband:
         return np.round(309.54 * 10.0 ** (-flux / 2.5), 2)
@@ -29,40 +30,51 @@ def query_and_filter_catalogs(object_name: str, radius=1*u.arcsec):
     
     return multi_epoch_catalogs
 
+# TODO: Check AKARI as well for the targets
+def query_catalog(object_name: str, catalog: str,
+                  index: int):
+    """Query the specified catalog for the specified object
+    from a multi epoch catalog."""
+    if catalog == "wise":
+        wise = Irsa.query_region(object_name, catalog="allwise_p3as_mep",
+                                  spatial="Cone", radius=1*u.arcsec)
+
+        w, w_err = wise[f"w{index}mpro_ep"], wise[f"w{index}sigmpro_ep"]
+        # w_err_ratio = w_err / w
+
+        labels = Time(wise["mjd"].data, format="mjd")
+        ind = np.argsort(labels)
+        labels = labels[ind]
+        w, w_err = w[ind], w_err[ind]
+        isot = [label.isot for label in labels]
+        data = {k: {"time": [], "value": [], "error": []}
+                for k in np.unique([iso.split("T")[0] for iso in isot])}
+
+        for w_entry, w_err_entry, iso in zip(w, w_err, isot):
+            key, time = iso.split("T")
+            data[key]["time"].append(time[:-4])
+            data[key]["value"].append(w_entry)
+            data[key]["error"].append(w_err_entry)
+    return {k: {ki: np.array(vi) for ki, vi in v.items()} for k, v in data.items()}
+
 
 def plot_multi_epoch(object_name: str) -> None:
     """Plot the multi-epoch WISE data for the specified object."""
-    table = Irsa.query_region(object_name, catalog="allwise_p3as_mep",
-                              spatial="Cone", radius=1 * u.arcsec)
-    w1, w3 = table["w1mpro_ep"], table["w3mpro_ep"]
-    w1_sigma, w3_sigma = table["w1sigmpro_ep"], table["w3sigmpro_ep"]
-    w1_err, w3_err = w1_sigma/w1, w3_sigma/w3
-    w1, w3 = wise_to_flux(w1, True), wise_to_flux(w3, False)
-    w1_err, w3_err = w1*w1_err, w3*w3_err
+    # akari_data = query_catalog(object_name, "akari")
 
-    labels = Time(table["mjd"].data, format="mjd")
-    ind = np.argsort(labels)
-    labels = labels[ind]
-    w1, w3 = w1[ind], w3[ind]
-    w1_err, w3_err = w1_err[ind], w3_err[ind]
-    isot = [label.isot[:16] for label in labels]
-    errorbar_kwargs = {"fmt": "o", "ecolor": "gray", "capsize": 5}
-
-    _, (ax, bx) = plt.subplots(1, 2, figsize=(15, 7))
-    ax.errorbar(isot, w1, w1_err, **errorbar_kwargs)
-    bx.errorbar(isot, w3, w3_err, c="orange", **errorbar_kwargs)
-
-    ax.set_ylabel("Flux (Jy)")
-    ax.set_xlabel("Time (UTC)")
-    ax.set_ylim([0, None])
-    ax.set_title(f"{object_name} W1")
-    ax.tick_params(axis="x", labelsize=6, rotation=45)
-
-    bx.set_ylabel("Flux (Jy)")
-    bx.set_xlabel("Time (UTC)")
-    bx.set_title(f"{object_name} W3")
-    bx.set_ylim([0, None])
-    bx.tick_params(axis="x", labelsize=6, rotation=45)
+    _, axarr = plt.subplots(1, 2, figsize=(15, 7))
+    for index, ax in zip([1, 3], axarr.flatten()):
+        wise_data = query_catalog(object_name, "wise", index)
+        errorbar_kwargs = {"fmt": "o", "ecolor": "gray", "capsize": 5}
+        for key, value in wise_data.items():
+            ax.errorbar(value["time"], value["value"], value["error"],
+                        label=key, **errorbar_kwargs)
+        ax.set_ylabel("Luminosity (mag)")
+        ax.set_xlabel("Time (UTC)")
+        # ax.set_ylim([0, None])
+        ax.set_title(f"{object_name.upper()} WISE{index}")
+        ax.tick_params(axis="x", labelsize=8, rotation=45)
+        ax.legend()
 
     plt.savefig("time_variability.pdf", format="pdf")
 
