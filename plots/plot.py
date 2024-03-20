@@ -6,12 +6,13 @@ from matadrs.utils.tools import get_fits_by_tag
 
 if __name__ == "__main__":
     fitting_dir = Path("/Users/scheuck/Data/reduced_data/hd142666/fitting_data")
+    hd142527_dir = Path("/Users/scheuck/Data/reduced_data/hd142527/uv/uts")
     # directory = Path("/Users/scheuck/Data/reduced_data/hd142666/gravity/fits/calibrated")
     # for fits_file in directory.glob("*fits"):
     #     plotter = Plotter(fits_file, save_path=fits_file.parent)
     #     plotter.add_flux().plot(error=True, save=True, margin=0.3)
 
-    ut_files = list(fitting_dir.glob("*AQU*.fits"))
+    ut_files = list(hd142527_dir.glob("*.fits"))
     uv_plotter = Plotter(ut_files, plot_name="uv_uts.pdf")
     uv_plotter.add_uv(color_grouping="file",
                       make_tracks=True).plot(save=True)

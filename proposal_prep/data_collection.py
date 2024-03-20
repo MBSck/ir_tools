@@ -118,5 +118,5 @@ class TargetInformation:
 
 
 if __name__ == "__main__":
-    target = TargetInformation("CI Tau")
+    target = TargetInformation("HD 142527")
     target.print_overview()
