@@ -127,10 +127,8 @@ def calculate_vis(directory: Optional[Path] = None,
         plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
 
-
-
 if __name__ == "__main__":
     matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142527/matisse")
     path = matisse_path / "nband" / "uts"
-    average_total_flux(path)
+    average_total_flux(path, error=True, save=True)
     calculate_vis(path / "flux", propagate_fluxerr=False, error=True, save=True)
