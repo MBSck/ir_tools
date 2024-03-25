@@ -2,12 +2,11 @@ import shutil
 from pathlib import Path
 from typing import List, Optional
 
+import numpy as np
 from astropy.io import fits
-from matadrs.reduction.avg_oifits import calc_vis_from_corrflux
 from matadrs.utils.plot import Plotter
 from tqdm import tqdm
-
-from utils import remove_flawed_telescope, average_total_flux, replace_data
+from scipy.interpolate import interp1d
 
 
 # TODO: Make a routine that does all these calculations immediately and makes a finished files folder, too.
@@ -60,6 +59,54 @@ def combine_chopped_non_chopped(
         plot.add_mosaic().plot(**kwargs)
 
 
+def calc_vis_from_corrflux(input_corrflux_file,input_totalflux_file,outfile_path,propagate_fluxerr=True):
+    """Taken from Varga code"""
+    shutil.copyfile(input_corrflux_file, outfile_path)
+    outhdul  = fits.open(outfile_path, mode='update')
+
+    inhdul_corr = fits.open(input_corrflux_file, mode='readonly')
+    inhdul_tot = fits.open(input_totalflux_file, mode='readonly')
+
+    wl_flux = inhdul_tot['OI_WAVELENGTH'].data['EFF_WAVE']
+    flux = inhdul_tot['OI_FLUX'].data['FLUXDATA'][0]
+    fluxerr = inhdul_tot['OI_FLUX'].data['FLUXERR'][0]
+
+    # NOTE: Read correlated spectra
+    corrflux = inhdul_corr['OI_VIS'].data['VISAMP']
+    corrfluxerr = inhdul_corr['OI_VIS'].data['VISAMPERR']
+    wl_corrflux = inhdul_corr['OI_WAVELENGTH'].data['EFF_WAVE']
+
+    if not len(outhdul['OI_VIS'].data['VISAMP'][0]) == len(flux):
+        # NOTE: Interpolate the flux data to the wavelengths of the correlated flux
+        f = interp1d(wl_flux, flux,kind='cubic')
+        flux_resamp = f(wl_corrflux)
+        f = interp1d(wl_flux, fluxerr,kind='cubic')
+        fluxerr_resamp = f(wl_corrflux)
+        flux = flux_resamp
+        fluxerr = fluxerr_resamp
+        outhdul['OI_FLUX'].data['FLUXDATA'] = flux
+        outhdul['OI_FLUX'].data['FLUXERR'] = fluxerr
+        
+    for k in range(len(outhdul['OI_VIS'].data['VISAMP'])):
+        # NOTE: Collect and average matching vis2 data
+        vis = (corrflux[k]/flux)
+        if propagate_fluxerr:
+            viserr = vis*np.sqrt((corrfluxerr[k]/corrflux[k])**2 + (fluxerr/flux)**2)
+        else:
+            viserr = corrfluxerr[k]/flux[k] #WARNING: this is not how errors should be calculated
+        vis2, vis2err = vis**2.0, 2.0*vis*viserr
+
+        outhdul['OI_VIS2'].data['VIS2DATA'][k] = vis2
+        outhdul['OI_VIS2'].data['VIS2ERR'][k] = vis2err 
+        outhdul['OI_VIS2'].data['STA_INDEX'][k] = inhdul_corr['OI_VIS'].data['STA_INDEX'][k]
+        outhdul['OI_VIS2'].data['UCOORD'][k] = inhdul_corr['OI_VIS'].data['UCOORD'][k]
+        outhdul['OI_VIS2'].data['VCOORD'][k] = inhdul_corr['OI_VIS'].data['VCOORD'][k]
+    outhdul.flush()
+    outhdul.close()
+    inhdul_corr.close()
+    inhdul_tot.close()
+
+
 def calculate_vis(directory: Optional[Path] = None,
                   propagate_fluxerr: Optional[bool] = True,
                   **kwargs) -> None:
@@ -78,23 +125,8 @@ def calculate_vis(directory: Optional[Path] = None,
         plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
 
-if __name__ == "__main__":
-    directory = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/mat_tools/test/2022-04-21")
-    matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
-    mat_tools_path = matisse_path / "mat_tools"
-    nband_dir = mat_tools_path / "nband"
-    lband_dir = mat_tools_path / "lband"
-    flawed_file = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/mat_tools/nband/hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits")
-    flawed_file = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/mat_tools/lband/hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits")
-    flawed_file = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/mat_tools/lband/hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT_CHOPPED.fits")
-    # remove_flawed_telescope(flawed_file, ["UT2"], error=True, save=True)
-    # average_total_flux(nband_dir, error=True, save=True)
-    # calculate_vis(nband_dir / "flux", propagate_fluxerr=False, error=True, save=True)
-    # average_total_flux(lband_dir, error=True, save=True)
 
-    combine_chopped_non_chopped(lband_dir / "flux", ["2023-06-17", "2023-04-30"],
-                                error=True, save=True)
-    # calculate_vis(lband_dir / "flux",
-    #               propagate_fluxerr=False, error=True, save=True)
-    calculate_vis(lband_dir / "flux" / "combined",
-                  propagate_fluxerr=False, error=True, save=True)
+
+if __name__ == "__main__":
+    matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142527/matisse")
+    calculate_vis(matisse_path / "nband" / "uts", propagate_fluxerr=False, error=True, save=True)

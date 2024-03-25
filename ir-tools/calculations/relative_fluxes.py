@@ -4,7 +4,6 @@ import numpy as np
 from astropy.io import fits
 
 
-
 def print_relative_flux(fits_file: Path) -> None:
     """Plots the model information stored in the (.fits)-file.
 
