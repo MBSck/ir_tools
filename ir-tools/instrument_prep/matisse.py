@@ -8,6 +8,8 @@ from matadrs.utils.plot import Plotter
 from tqdm import tqdm
 from scipy.interpolate import interp1d
 
+from ..utils import average_total_flux
+
 
 # TODO: Make a routine that does all these calculations immediately and makes a finished files folder, too.
 
@@ -129,4 +131,6 @@ def calculate_vis(directory: Optional[Path] = None,
 
 if __name__ == "__main__":
     matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142527/matisse")
-    calculate_vis(matisse_path / "nband" / "uts", propagate_fluxerr=False, error=True, save=True)
+    path = matisse_path / "nband" / "uts"
+    average_total_flux(path)
+    calculate_vis(path / "flux", propagate_fluxerr=False, error=True, save=True)

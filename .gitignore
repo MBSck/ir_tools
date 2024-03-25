@@ -16,3 +16,4 @@
 *.npy
 old/
 __pycache__/
+*egg-info/*
