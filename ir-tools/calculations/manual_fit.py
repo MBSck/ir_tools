@@ -91,34 +91,39 @@ def plot_sed(flux_dir: Path) -> Tuple[np.ndarray, np.ndarray]:
 
 if __name__ == "__main__":
     flux_dir = Path("/Users/scheuck/Data/flux_data/hd142666/")
-    wl, flux = plot_sed(flux_dir)
-    wl_star, flux_star, *_ = np.loadtxt(flux_dir / "HD142666_stellar_model.txt.gz",
-                                        comments="#", unpack=True)
-    wl_star *= u.um
-    flux_star = (flux_star*u.Jy).to(u.erg/u.s/u.cm**2, u.spectral_density(wl_star))
-    flux_star = np.interp(wl, wl_star, flux_star)
-    flux -= flux_star
+    wl = np.linspace(300, 700, 3000)*u.nm
+    bb = BlackBody(6500*u.K)(wl)
+    # bb = calc_blackbody(6500*u.K, wl, 20*u.mas)
+    plt.plot(wl.value, bb.value)
+    plt.show()
+    # wl, flux = plot_sed(flux_dir)
+    # wl_star, flux_star, *_ = np.loadtxt(flux_dir / "HD142666_stellar_model.txt.gz",
+    #                                     comments="#", unpack=True)
+    # wl_star *= u.um
+    # flux_star = (flux_star*u.Jy).to(u.erg/u.s/u.cm**2, u.spectral_density(wl_star))
+    # flux_star = np.interp(wl, wl_star, flux_star)
+    # flux -= flux_star
 
-    temps, ratios = [2100, 1500, 1100, 900, 500], [0.15, 0.7, 1.2, 2.3, 7]
-    wl_range = np.linspace(np.min(wl.value), np.max(wl.value), 300)
-    bbs = [calc_blackbody(temp*u.K, wl_range*u.um, ratio*u.mas) for temp, ratio in zip(temps, ratios)]
+    # temps, ratios = [2100, 1500, 1100, 900, 500], [0.15, 0.7, 1.2, 2.3, 7]
+    # wl_range = np.linspace(np.min(wl.value), np.max(wl.value), 300)
+    # bbs = [calc_blackbody(temp*u.K, wl_range*u.um, ratio*u.mas) for temp, ratio in zip(temps, ratios)]
 
-    nband = np.where((wl > 8.0*u.um) & (wl < 14.0*u.um))
-    bb_combined = np.sum(bbs, axis=0)
-    bb_combined_interpn = np.interp(wl, wl_range*u.um, bb_combined)
-    inner_contribution = (bb_combined_interpn/flux.value)[nband]
-    np.save("flux_ratio_inner_disk_hd142666.npy", np.array([wl[nband], inner_contribution]))
-    print(inner_contribution*100)
-    plt.scatter(wl.value, flux.value, s=5, alpha=0.6, label="Data")
+    # nband = np.where((wl > 8.0*u.um) & (wl < 14.0*u.um))
+    # bb_combined = np.sum(bbs, axis=0)
+    # bb_combined_interpn = np.interp(wl, wl_range*u.um, bb_combined)
+    # inner_contribution = (bb_combined_interpn/flux.value)[nband]
+    # np.save("flux_ratio_inner_disk_hd142666.npy", np.array([wl[nband], inner_contribution]))
+    # print(inner_contribution*100)
+    # plt.scatter(wl.value, flux.value, s=5, alpha=0.6, label="Data")
 
-    for index, bb in enumerate(bbs):
-        plt.plot(wl_range, bb.value, label=f"{temps[index]} K")
-    plt.plot(wl_range, bb_combined, label=f"Combined")
+    # for index, bb in enumerate(bbs):
+    #     plt.plot(wl_range, bb.value, label=f"{temps[index]} K")
+    # plt.plot(wl_range, bb_combined, label=f"Combined")
 
-    plt.xlabel(r"Wavelength ($\mu$m)")
-    plt.ylabel(r"$\lambda F_{\lambda}$ (erg s$^{-1}$ cm$^{-2}$)")
-    plt.ylim([0, None])
-    plt.legend()
+    # plt.xlabel(r"Wavelength ($\mu$m)")
+    # plt.ylabel(r"$\lambda F_{\lambda}$ (erg s$^{-1}$ cm$^{-2}$)")
+    # plt.ylim([0, None])
+    # plt.legend()
 
-    plt.savefig("lambda_flux_lambda.pdf", format="pdf")
-    plt.close()
+    # plt.savefig("lambda_flux_lambda.pdf", format="pdf")
+    # plt.close()
