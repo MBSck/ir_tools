@@ -8,7 +8,7 @@ from ppdmod.options import OPTIONS
 
 
 if __name__ == "__main__":
-    fitting_dir = Path("/Users/scheuck/Data/reduced_data/hd142666/fitting_data")
+    fitting_dir = Path("")
     # model_file = Path("/Users/scheuck/Pictures/Meetings/thomas_and_roy/2024-01-12/nsteps10000_nw100_kband/model.fits")
     # OPTIONS["plot.color.background"] = "black"
     OPTIONS.fit.data = ["flux", "vis2", "t3phi"]
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     OPTIONS.data.binning.window = 0.2
     fits_files = list(fitting_dir.glob("*.fits"))
     # set_data(fits_files)
-    # # plot_overview(savefig="data_overview.png")
+    plot_overview(savefig="data_overview.pdf")
     # target = "hd142527"
     # plot_target(target, wavelength_range=[1, 13]*u.um,
     #             title=target.upper(),

@@ -128,8 +128,8 @@ def calculate_vis(directory: Optional[Path] = None,
 
 
 if __name__ == "__main__":
-    matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142527/matisse")
+    path = Path("/Users/scheuck/Data/reduced_data/hd142527/matisse/lband/")
     # matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/old/1.7.6/mat_tools")
-    path = matisse_path / "lband"
-    average_total_flux(path, error=True, save=True)
-    calculate_vis(path / "flux", propagate_fluxerr=False, error=True, save=True)
+    # combine_chopped_non_chopped(path, error=True, save=True)
+    average_total_flux(path / "combined", error=True, save=True)
+    calculate_vis(path / "combined" / "flux", propagate_fluxerr=False, error=True, save=True)

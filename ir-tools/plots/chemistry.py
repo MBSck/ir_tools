@@ -14,6 +14,7 @@ def plot_combined_grains(file_dir: Path,
                          fmaxs: Optional[List[float]] = None,
                          wavelength_range: Optional[List[float]] = [1.6, 14],
                          save_dir: Optional[Path] = None) -> None:
+    """Plot combined opacities."""
     save_dir = Path(save_dir)
     wls, data = utils.get_opacity(file_dir, weights, sizes, names, method, fmaxs=fmaxs)
     indices = np.where((wls[0] > wavelength_range[0])
@@ -106,9 +107,9 @@ if __name__ == "__main__":
 
     plot_individual_grains(path, dhs_continuum_file,
                            weights, names, "qval", sizes, fmaxs,
-                           save_dir="individual_grains.png")
+                           save_dir="individual_grains.pdf")
 
     plot_combined_grains(path, weights, names, "qval", sizes, fmaxs,
-                         save_dir="combined_grains.png")
+                         save_dir="combined_grains.pdf")
     # plot_all_combined_grains(qval_paths, grf_paths,
     #                          dhs_continuum_file, weights)
