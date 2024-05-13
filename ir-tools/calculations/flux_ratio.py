@@ -5,7 +5,7 @@ import astropy.units as u
 import astropy.constants as const
 import numpy as np
 from ppdmod.data import set_data, get_all_wavelengths
-from ppdmod.utils import load_data
+from ppdmod.utils import load_data, compute_photometric_slope
 
 
 def get_flux_ratio(fits_files: List[Path], flux_file: Path) -> np.ndarray:
@@ -37,3 +37,7 @@ if __name__ == "__main__":
     
     wl, ks = get_photometric_slope(fits_files, flux_file)
     np.save("hd142527_slope.npy", np.array([wl, ks]))
+
+    wl = np.linspace(2, 3, 100)*u.um
+    ks = compute_photometric_slope(wl, 1560)
+    print(f"wavelength {wl[15]:.2f}", f"photometric slope {ks[15]:.2f}")

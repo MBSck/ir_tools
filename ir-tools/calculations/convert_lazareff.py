@@ -14,12 +14,12 @@ def calculate_ar(la: float, lk: float) -> float:
 
 def calculate_a_and_phi(c1: float, s1: float) -> float:
     """Calculate A and Phi from c1 and s1."""
-    return np.hypot(c1, s1), np.arctan2(s1, c1) * u.rad.to(u.deg)
+    return np.hypot(c1, s1), np.arctan2(c1, s1) * u.rad.to(u.deg)
     
 
 if __name__ == "__main__":
-    la, lk = 0.98, -0.26
-    c1, s1 = 0.24, -0.97
+    la, lk = 0.08, 0.54
+    c1, s1 = -0.6, -0.57
     ak = calculate_ak(la, lk)
     ar = calculate_ar(la, lk)
     a, phi = calculate_a_and_phi(c1, s1)
