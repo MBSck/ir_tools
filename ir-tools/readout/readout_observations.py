@@ -108,7 +108,6 @@ def read_to_table(fits_files: List[Path], save_as_csv: Optional[bool] = False,
             data["Comment"].append(comment)
 
     df = pd.DataFrame(data).sort_values(by="date")
-    breakpoint()
     df.to_csv("observations.csv", index=False, header=False)
 
 
