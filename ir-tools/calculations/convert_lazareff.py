@@ -22,7 +22,8 @@ if __name__ == "__main__":
     c1, s1 = -0.6, -0.57
     ak = calculate_ak(la, lk)
     ar = calculate_ar(la, lk)
-    a, phi = calculate_a_and_phi(c1, s1)
+    a, phi = 1, 0
+    print("c1, s1", a * np.cos(phi), a * np.sin(phi))
     print("FWHM:", 2 * 10**la)
     print("hlr:", 10**la)
     print("ak:", ak)
@@ -30,6 +31,8 @@ if __name__ == "__main__":
     print("w:", ak / np.hypot(ar, ak))
     print("ak (HD45677) vs ak (calculated)", 0.48 * 10**0.98, calculate_ak(0.98, -0.26))
     print("ak (HD144668) vs ak (calculated)", 0.85 * 10**0.09, calculate_ak(0.09, 0.32))
+
+    a, phi = calculate_a_and_phi(c1, s1)
     print("a, phi:", a, phi)
     print("pa:", 2.13 * u.rad.to(u.deg))
     print("pa:", 0.09 * u.rad.to(u.deg))
