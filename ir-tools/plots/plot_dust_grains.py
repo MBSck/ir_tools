@@ -33,7 +33,8 @@ def plot_individual_grains(file_dir: Path, continuum_file: Path,
                            sizes: List[float],
                            fmaxs: Optional[List[float]] = None,
                            wavelength_range: Optional[List[float]] = [1.6, 14],
-                           save_dir: Optional[Path] = None) -> None:
+                           save_dir: Optional[Path] = None,
+                           cmap: Optional[str] = "tab20") -> None:
     """Plot individual opacities."""
     save_dir = Path(save_dir)
     linestyles = ["solid", "dashed"]
@@ -47,27 +48,32 @@ def plot_individual_grains(file_dir: Path, continuum_file: Path,
     indices = np.where((wls[0] > wavelength_range[0])
                        & (wls[0] < wavelength_range[1]))
 
+    text_kwargs = {"fontsize": 14, "va": "center"}
     _, axarr = plt.subplots(len(names)+1, 1,
-                            figsize=(12, 10), sharex=True)
+                              figsize=(12, 10), sharex=True)
+    # fig.text(0.04, 0.5, r"$\kappa$ ($cm^{2}g^{-1}$)",
+    #          rotation="vertical", va="center")
+
     lower_ind = 0
-    for ax, size, label in zip(axarr.flatten(), sizes, names):
+    for index, (ax, size, label) in enumerate(zip(axarr.flatten(), sizes, names)):
         tmp_wls = wls[lower_ind:lower_ind+len(size)]
         tmp_data = data[lower_ind:lower_ind+len(size)]
         for i, dat in enumerate(tmp_data):
             ax.plot(tmp_wls.flatten()[indices], dat.flatten()[indices],
-                    label=rf"{size[i]} $\mu$m", ls=linestyles[i])
+                    label=rf"{size[i]} $\mu$m", ls=linestyles[i],
+                    c=plt.get_cmap(cmap)(i))
+        if index == 2:
             ax.set_ylabel(r"$\kappa$ ($cm^{2}g^{-1}$)")
-            ax.text(0.5, 0.8, label.title(), ha="center",
-                    va="center", transform=ax.transAxes)
-            ax.legend()
+        ax.text(0.5, 0.8, label.title(), ha="center",
+                transform=ax.transAxes, **text_kwargs)
+        ax.legend()
         lower_ind += len(size)
 
     axarr[-1].plot(wl_cont[cont_ind], op_cont[cont_ind], label=r"0.1 $\mu$m")
     axarr[-1].set_xlabel(r"$\lambda$ ($\mu$m)")
-    axarr[-1].set_ylabel(r"$\kappa$ ($cm^{2}g^{-1}$)")
     axarr[-1].text(0.5, 0.8, "Carbon", ha="center",
-                   va="center", transform=axarr[-1].transAxes)
-    axarr[-1].legend()
+                   transform=axarr[-1].transAxes, **text_kwargs)
+    plt.tight_layout()
     plt.savefig(save_dir, format=save_dir.suffix[1:], dpi=300)
     plt.close()
 
@@ -107,7 +113,7 @@ if __name__ == "__main__":
 
     plot_individual_grains(path, dhs_continuum_file,
                            weights, names, "qval", sizes, fmaxs,
-                           save_dir="individual_grains.pdf")
+                           save_dir="dust_species.pdf")
 
     plot_combined_grains(path, weights, names, "qval", sizes, fmaxs,
                          save_dir="combined_grains.pdf")

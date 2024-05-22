@@ -10,10 +10,11 @@ def read_to_table(fits_files: List[Path], save_as_csv: Optional[bool] = False,
     """Read a FITS file and return the data as an astropy table."""
     data = {"instrument": [], "date": [], "seeing": [], "tau0": [],
             "stations": [], "array": [], "name": [], "ldd": [],
-            "time": [], "Comment": []}
+            "time": [], "resolution": [], "comment": []}
 
     for fits_file in fits_files:
         readout = ReadoutFits(fits_file)
+
         data["instrument"].append(readout.instrument_mode.upper())
         data["date"].append(readout.date[:-8])
         data["seeing"].append(round(readout.seeing, 1))
@@ -26,7 +27,7 @@ def read_to_table(fits_files: List[Path], save_as_csv: Optional[bool] = False,
         data["ldd"].append(cal_ldd)
         data["time"].append(cal_time)
 
-        comment = ""
+        comment, resolution = "", ""
         if readout.instrument.lower() == "pionier":
             comment = "H"
         elif readout.instrument.lower() == "gravity":
@@ -37,10 +38,12 @@ def read_to_table(fits_files: List[Path], save_as_csv: Optional[bool] = False,
             else:
                 comment = "L"
 
-        data["Comment"].append(comment)
+            resolution = "/".join([readout.primary_header[f"hierarch eso ins di{band} name"] for band in comment])
+
+        data["comment"].append(comment)
+        data["resolution"].append(resolution)
 
     df = pd.DataFrame(data).sort_values(by="date")
-    breakpoint()
     df.to_csv("observations.csv", index=False, header=False)
 
 

@@ -40,9 +40,8 @@ if __name__ == "__main__":
     instrument, band = "matisse", "lband"
     plotter = Plotter(files, f"total_flux_{band}.pdf")
     plotter.filter(["instrument", "array", "band"], [instrument, "uts", band]).sort(by="date")
-    fig, axarr = plotter.add_flux().plot(error=True, no_fill=True, rax=True)
+    fig, axarr = plotter.add_flux().plot(error=True, no_fill=True, rax=True, legend_location="lower left")
     axarr.set_ylim(bottom=0, top=10)
-    axarr.legend(loc="lower left")
     plt.savefig(f"total_flux_{band}.pdf", format="pdf")
 
     # flux_data = Path("/Users/scheuck/Data/flux_data/hd142527")
