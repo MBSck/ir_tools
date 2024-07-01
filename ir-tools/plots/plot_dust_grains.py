@@ -16,11 +16,11 @@ def plot_combined_grains(file_dir: Path,
                          save_dir: Optional[Path] = None) -> None:
     """Plot combined opacities."""
     save_dir = Path(save_dir)
-    wls, data = utils.get_opacity(file_dir, weights, sizes, names, method, fmaxs=fmaxs)
-    indices = np.where((wls[0] > wavelength_range[0])
-                       & (wls[0] < wavelength_range[1]))
+    wl, data = utils.get_opacity(file_dir, weights, sizes, names, method, fmaxs=fmaxs)
+    indices = np.where((wl > wavelength_range[0])
+                       & (wl < wavelength_range[1]))
 
-    plt.plot(wls[0][indices], data[indices])
+    plt.plot(wl[indices], data[indices])
     plt.xlabel(r"$\lambda$ ($\mu$m)")
     plt.ylabel(r"$\kappa$ ($cm^{2}g^{-1}$)")
     plt.savefig(save_dir, format=save_dir.suffix[1:], dpi=300)
@@ -43,10 +43,10 @@ def plot_individual_grains(file_dir: Path, continuum_file: Path,
     cont_ind = np.where((wl_cont > wavelength_range[0])
                          & (wl_cont < wavelength_range[1]))
 
-    wls, data = utils.get_opacity(file_dir, weights, sizes, names,
+    wl, data = utils.get_opacity(file_dir, weights, sizes, names,
                                   method, fmaxs=fmaxs, individual=True)
-    indices = np.where((wls[0] > wavelength_range[0])
-                       & (wls[0] < wavelength_range[1]))
+    indices = np.where((wl > wavelength_range[0])
+                       & (wl < wavelength_range[1]))
 
     text_kwargs = {"fontsize": 14, "va": "center"}
     _, axarr = plt.subplots(len(names)+1, 1,
@@ -56,10 +56,9 @@ def plot_individual_grains(file_dir: Path, continuum_file: Path,
 
     lower_ind = 0
     for index, (ax, size, label) in enumerate(zip(axarr.flatten(), sizes, names)):
-        tmp_wls = wls[lower_ind:lower_ind+len(size)]
         tmp_data = data[lower_ind:lower_ind+len(size)]
         for i, dat in enumerate(tmp_data):
-            ax.plot(tmp_wls.flatten()[indices], dat.flatten()[indices],
+            ax.plot(wl.flatten()[indices], dat.flatten()[indices],
                     label=rf"{size[i]} $\mu$m", ls=linestyles[i],
                     c=plt.get_cmap(cmap)(i))
         if index == 2:
@@ -109,7 +108,7 @@ if __name__ == "__main__":
     weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0])/100
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
     sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
-    fmaxs = [1.0, 1.0, 1.0, 0.7]
+    fmaxs = [1.0, 1.0, 1.0, None]
 
     plot_individual_grains(path, dhs_continuum_file,
                            weights, names, "qval", sizes, fmaxs,
