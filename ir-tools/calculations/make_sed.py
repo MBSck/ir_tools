@@ -110,6 +110,7 @@ def plot_vizier_sed(target: str,
 
 
 if __name__ == "__main__":
+    # TODO: SED resolution as of now is a bit low
     wavelength_range, scaling = [0, 15], "nu"
     wavelengths = np.linspace(wavelength_range[0], wavelength_range[1], 1000) * u.um
     wavelengths_dict = {"hband": [1.6]*u.um, "kband": [2.25]*u.um,
@@ -138,11 +139,11 @@ if __name__ == "__main__":
     combined_flux = bbs + star_flux_nu
     nu_flux = (const.c / (wl_flux * u.um).to(u.m)).to(u.Hz)
     combined_flux_jy = (combined_flux / nu_flux).to(u.Jy)
-    np.save("hd142527_sed_fit.npy", combined_flux_jy.value)
+    np.save("hd142527_sed_fit.npy", [wl_flux, combined_flux_jy.value])
     ax.plot(wl_flux, combined_flux, label="Combined")
 
-    plot_vizier_sed("HD142527", wavelength_range * u.um, ax=ax,
-                    filters=["2MASS", "WISE", "IRAS"], scaling=scaling)
+    # plot_vizier_sed("HD142527", wavelength_range * u.um, ax=ax,
+    #                 filters=["2MASS", "WISE", "IRAS"], scaling=scaling)
 
     ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
     ax.set_ylabel(r"$F_\nu\nu$ (erg s$^{-1}$ cm$^{-2}$)")
