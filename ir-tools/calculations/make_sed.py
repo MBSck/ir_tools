@@ -136,6 +136,9 @@ if __name__ == "__main__":
 
     bbs = np.sum([np.interp(wl_flux * u.um, wavelengths, bb) for bb in bbs], axis=0) * u.erg/u.s/u.cm**2
     combined_flux = bbs + star_flux_nu
+    nu_flux = (const.c / (wl_flux * u.um).to(u.m)).to(u.Hz)
+    combined_flux_jy = (combined_flux / nu_flux).to(u.Jy)
+    np.save("hd142527_sed_fit.npy", combined_flux_jy.value)
     ax.plot(wl_flux, combined_flux, label="Combined")
 
     plot_vizier_sed("HD142527", wavelength_range * u.um, ax=ax,
