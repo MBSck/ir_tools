@@ -10,6 +10,17 @@ from tqdm import tqdm
 from uncertainties import unumpy
 
 
+def sort_for_wl_channels(file: Path) -> None:
+    with fits.open(file, mode="readonly") as hdul:
+        wavelengths = hdul["oi_wavelength"].data["eff_wave"]
+        num_channels = len(wavelengths)
+        folder_name = f"{num_channels}_channels"
+        output_dir = Path(file.parent) / folder_name
+        output_dir.mkdir(parents=True, exist_ok=True)
+        destination = output_dir / file.name
+        shutil.move(str(file), str(destination))
+
+
 def delete_add_ins(file: Path) -> None:
     """Deletes the oi_flux and oi_vis extensions."""
     with fits.open(file, mode="update") as hdul:
@@ -85,7 +96,8 @@ def calculate_vis(file: Path, flux_file: Path, **kwargs) -> None:
 
 
 if __name__ == "__main__":
-    directory = Path("/Users/scheuck/Data/reduced_data/hd142527/pionier")
+    directory = Path("/Users/scheuck/Data/reduced_data/hd142527/pionier/3_channels")
     flux_file = Path("/Users/scheuck/Data/flux_data/hd142527/hd142527_sed_fit.npy")
     for index, fits_file in enumerate(tqdm(list(directory.glob("*.fits")))):
+        # sort_for_wl_channels(fits_file)
         calculate_vis(fits_file, flux_file, margin=0.3, error=True, save=True)
