@@ -21,7 +21,7 @@ def calc_blackbody(temperature: u.K, wavelengths: u.um,
     if scaling == "nu":
         flux = flux * (const.c / wavelengths.to(u.m)).to(u.Hz)
     else:
-        flux.to(u.Jy)
+        flux = flux.to(u.Jy)
     return flux
 
 
@@ -109,6 +109,55 @@ def plot_vizier_sed(target: str,
         plt.close()
 
 
+def make_full_sed_fit(wavelength_range, star_flux_file: Path,
+                      temps, weights, scaling: Optional[str] = "nu"):
+    """Creates a full SED fit for"""
+    _, ax = plt.figure(tight_layout=True), plt.axes()
+    plot_sed(wavelength_range * u.um, scaling=scaling, no_model=True, ax=ax)
+    wl_flux, star_flux = load_data(star_flux_file)
+
+    bbs = []
+    for temp, weight in zip(temps, weights):
+        bb_flux = calc_blackbody(temperature=temp * u.K, wavelengths=wavelengths,
+                                 weight=weight * u.mas, scaling=scaling)
+        ax.plot(wavelengths, bb_flux, label=f"{temp} K")
+        bbs.append(bb_flux)
+
+    star_flux *= u.Jy
+    if scaling == "nu":
+        star_flux = star_flux.to(u.erg/u.s/u.Hz/u.cm**2) * (const.c / (wl_flux * u.um)).to(u.Hz)
+
+    ax.plot(wl_flux, star_flux, label="Star")
+
+    bbs = np.sum([np.interp(wl_flux * u.um, wavelengths, bb) for bb in bbs], axis=0)
+    if scaling == "nu":
+        bbs *= u.erg/u.s/u.cm**2
+    else:
+        bbs *= u.Jy
+
+    combined_flux = bbs + star_flux
+    combined_flux_jy = combined_flux
+    if scaling == "nu":
+        nu_flux = (const.c / (wl_flux * u.um).to(u.m)).to(u.Hz)
+        combined_flux_jy = (combined_flux / nu_flux).to(u.Jy)
+
+    np.save("hd142527_sed_fit.npy", [wl_flux, combined_flux_jy.value])
+    ax.plot(wl_flux, combined_flux, label="Combined")
+    plot_vizier_sed("HD142527", wavelength_range * u.um, ax=ax,
+                    filters=["2MASS", "WISE", "IRAS"], scaling=scaling)
+
+    ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+    if scaling == "nu":
+        ax.set_ylabel(r"$\nu F_\nu$ (erg s$^{-1}$ cm$^{-2}$)")
+    else:
+        ax.set_ylabel(r"$F_\nu$ (Jy)")
+    plt.legend()
+
+    scaling_label = scaling if scaling is not None else ""
+    plt.savefig(f"{'_'.join(['hd142527_sed', scaling_label])}.pdf", format="pdf", dpi=300)
+    plt.close()
+
+
 if __name__ == "__main__":
     # TODO: SED resolution as of now is a bit low
     wavelength_range, scaling = [0, 15], "nu"
@@ -119,33 +168,9 @@ if __name__ == "__main__":
 
     fits_files = list((Path("/Users/scheuck/Data/fitting_data") / "hd142527").glob("*fits"))
     wavelength = np.concatenate((wavelengths_dict["lband"], wavelengths_dict["mband"], wavelengths_dict["nband"]))
+    star_flux_file = Path("/Users/scheuck/Data/flux_data")  / "hd142527" / "HD142527_stellar_model.txt"
     data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
+    temps, weights = [2000, 1500, 800], [0.38, 1, 1.7]
+    make_full_sed_fit(wavelength_range, star_flux_file, temps, weights, scaling="nu")
+    make_full_sed_fit(wavelength_range, star_flux_file, temps, weights, scaling=None)
 
-    fig, ax = plt.figure(tight_layout=True), plt.axes()
-    plot_sed(wavelength_range * u.um, scaling="nu", no_model=True, ax=ax)
-    wl_flux, star_flux = load_data(Path("/Users/scheuck/Data/flux_data")  / "hd142527" / "HD142527_stellar_model.txt")
-
-    temps, weights, bbs = [2000, 1500, 800], [0.38, 1, 1.7], []
-    for temp, weight in zip(temps, weights):
-        bb_flux = calc_blackbody(temperature=temp * u.K, wavelengths=wavelengths,
-                                 weight=weight * u.mas, scaling=scaling)
-        ax.plot(wavelengths, bb_flux, label=f"{temp} K")
-        bbs.append(bb_flux)
-
-    star_flux_nu = (star_flux * u.Jy).to(u.erg/u.s/u.Hz/u.cm**2) * (const.c / (wl_flux * u.um)).to(u.Hz)
-    ax.plot(wl_flux, star_flux_nu, label="Star")
-
-    bbs = np.sum([np.interp(wl_flux * u.um, wavelengths, bb) for bb in bbs], axis=0) * u.erg/u.s/u.cm**2
-    combined_flux = bbs + star_flux_nu
-    nu_flux = (const.c / (wl_flux * u.um).to(u.m)).to(u.Hz)
-    combined_flux_jy = (combined_flux / nu_flux).to(u.Jy)
-    np.save("hd142527_sed_fit.npy", [wl_flux, combined_flux_jy.value])
-    ax.plot(wl_flux, combined_flux, label="Combined")
-
-    # plot_vizier_sed("HD142527", wavelength_range * u.um, ax=ax,
-    #                 filters=["2MASS", "WISE", "IRAS"], scaling=scaling)
-
-    ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-    ax.set_ylabel(r"$F_\nu\nu$ (erg s$^{-1}$ cm$^{-2}$)")
-    plt.legend()
-    plt.savefig("hd142527_sed.pdf", format="pdf", dpi=300)

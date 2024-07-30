@@ -37,7 +37,7 @@ def calculate_vis(file: Path, flux_file: Path, **kwargs) -> None:
         vis_header = vis.header.copy()
 
     wl_flux, flux_data = np.load(flux_file)
-    flux_data = np.interp(wavelengths, wl_flux, flux_data)
+    flux_data = np.interp(wavelengths * u.m.to(u.um), wl_flux, flux_data)
 
     vis_header["EXTNAME"] = "oi_vis".upper()
     vis_header["TTYPE5"] = "visamp".upper()
@@ -65,21 +65,23 @@ def calculate_vis(file: Path, flux_file: Path, **kwargs) -> None:
         flux_header = vis_header.copy()
         flux_header["EXTNAME"] = "oi_flux".upper()
         flux = fits.BinTableHDU(
-            QTable({"wavelength": [wavelengths * u.um],
-                    "fluxdata": [flux_data * u.Jy],
-                    "fluxerr": [flux_data * 0.1 * u.Jy]}),
+            QTable({"WAVELENGTH": [wavelengths * u.um],
+                    "FLUXDATA": [flux_data * u.Jy],
+                    "FLUXERR": [flux_data * 0.1 * u.Jy]}),
             header=flux_header)
         hdul.append(flux)
+        hdul.append(vis)
         hdul.flush()
 
     if not (plot_dir := file.parent / "plots").exists():
         plot_dir.mkdir(parents=True)
     if not (new_plot_dir := new_file.parent / "plots").exists():
         new_plot_dir.mkdir(parents=True)
-    original_plot = Plotter(file, save_dir=plot_dir)
-    new_plot = Plotter(new_file, save_dir=new_plot_dir)
-    original_plot.add_uv().add_vis().add_vis2().add_t3().plot(**kwargs)
-    new_plot.add_uv().add_vis().add_vis2().add_t3().plot(**kwargs)
+
+    # original_plot = Plotter(file, save_dir=plot_dir)
+    # new_plot = Plotter(new_file, save_dir=new_plot_dir)
+    # original_plot.add_uv().add_vis().add_vis2().add_t3().plot(**kwargs)
+    # new_plot.add_uv().add_vis().add_vis2().add_t3().plot(**kwargs)
 
 
 if __name__ == "__main__":
