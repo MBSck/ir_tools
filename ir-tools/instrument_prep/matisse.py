@@ -57,7 +57,7 @@ def combine_chopped_non_chopped(
                 "added as the total flux"
             hdul["oi_flux"].data = oi_flux
             hdul.flush()
-        plot = Plotter(new_file, save_path=plot_dir)
+        plot = Plotter(new_file, save_dir=plot_dir)
         plot.add_mosaic().plot(**kwargs)
 
 
@@ -122,14 +122,14 @@ def calculate_vis(directory: Optional[Path] = None,
         new_file = plot_dir.parent / f"{fits_file.stem}_vis.fits"
         calc_vis_from_corrflux(fits_file, fits_file, new_file,
                                propagate_fluxerr=propagate_fluxerr)
-        plot = Plotter(new_file, save_path=plot_dir)
+        plot = Plotter(new_file, save_dir=plot_dir)
         unwrap = True if "AQUARIUS" in fits_file.name else False
         plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/reduced_data/hd142527/matisse/lband/")
+    path = Path("/Users/scheuck/Data/reduced_data/hd142527/matisse/lband")
     # matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/old/1.7.6/mat_tools")
-    # combine_chopped_non_chopped(path, error=True, save=True)
+    combine_chopped_non_chopped(path, error=True, save=True)
     average_total_flux(path / "combined", error=True, save=True)
-    calculate_vis(path / "combined" / "flux", propagate_fluxerr=False, error=True, save=True)
+    # calculate_vis(path / "combined" / "flux", propagate_fluxerr=False, error=True, save=True)

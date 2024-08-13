@@ -35,7 +35,7 @@ def average_total_flux(directory: Optional[Path] = None, **kwargs) -> None:
             hdul["oi_flux"].data["fluxdata"] = avg_flux
             hdul["oi_flux"].data["fluxerr"] = avg_fluxerr
             hdul.flush()
-        plot = Plotter(new_file, save_path=plot_dir)
+        plot = Plotter(new_file, save_dir=plot_dir)
         unwrap = True if "AQUARIUS" in fits_file.name else False
         plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
@@ -71,7 +71,7 @@ def remove_flawed_telescope(fits_file: Path, telescopes: List[str],
                     mask = np.any(data == sta_index, axis=1)
                     entry.data = entry.data[~mask]
         hdul.flush()
-    plot = Plotter(new_file, save_path=fits_file.parent)
+    plot = Plotter(new_file, save_dir=fits_file.parent)
     unwrap = True if "AQUARIUS" in new_file.name else False
     plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
