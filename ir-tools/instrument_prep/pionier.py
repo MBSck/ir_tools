@@ -1,4 +1,5 @@
 import shutil
+from typing import Optional
 from pathlib import Path
 
 import astropy.units as u
@@ -29,7 +30,8 @@ def delete_add_ins(file: Path) -> None:
             del hdul["oi_flux"]
 
 
-def calculate_vis(file: Path, flux_file: Path, **kwargs) -> None:
+def calculate_vis(file: Path, flux_file: Path,
+                  index: Optional[int] = None, **kwargs) -> None:
     """Calculates the correlated fluxes from the
     squared visibilities and a total flux.
 
@@ -43,44 +45,54 @@ def calculate_vis(file: Path, flux_file: Path, **kwargs) -> None:
         bad_data_dir.mkdir(parents=True)
 
     with fits.open(file, mode="readonly") as hdul:
-        wavelengths = hdul["oi_wavelength"].data["eff_wave"]
-        vis = hdul["oi_vis2"].copy()
-        vis_header = vis.header.copy()
+        wavelengths = hdul["oi_wavelength", index].data["eff_wave"]
+        vis = hdul["oi_vis2", index].copy()
 
     wl_flux, flux_data = np.load(flux_file)
     flux_data = np.interp(wavelengths * u.m.to(u.um), wl_flux, flux_data)
 
-    vis_header["EXTNAME"] = "oi_vis".upper()
-    vis_header["TTYPE5"] = "visamp".upper()
-    vis_header["TTYPE6"] = "visamperr".upper()
+    vis.header["EXTNAME"] = "oi_vis".upper()
+    vis.header["TTYPE5"] = "visamp".upper()
+    vis.header["TTYPE6"] = "visamperr".upper()
     vis.name = "oi_vis".upper()
     vis.columns[4].name = "visamp".upper()
     vis.columns[5].name = "visamperr".upper()
-
-    vis2 = unumpy.uarray(vis.data["visamp"], vis.data["visamperr"])
+    vis2 = unumpy.uarray(vis.data["visamp"], vis.data["visamperr"])[:, 1:]
     vis_data = unumpy.sqrt(vis2)
     vis_value = unumpy.nominal_values(vis_data)
     vis_err = unumpy.std_devs(vis_data)
-
+    vis_value = np.hstack((vis.data["visamp"][:, 0][:, np.newaxis], vis_value))
+    vis_err = np.hstack((vis.data["visamperr"][:, 0][:, np.newaxis], vis_err))
     vis.data["visamp"] = vis_value * flux_data * u.Jy
     vis.data["visamperr"] = vis_err * flux_data * u.Jy
 
     shutil.copy(file, (new_file := dir / f"{file.stem}_vis.fits"))
     with fits.open(new_file, mode="update") as hdul:
-        if np.max(hdul["oi_vis2"].data["vis2data"] > 1)\
-                or np.min(hdul["oi_vis2"].data["vis2data"] < 0):
+        if np.max(hdul["oi_vis2", index].data["vis2data"] > 1)\
+                or np.min(hdul["oi_vis2", index].data["vis2data"] < 0):
             file.rename(bad_data_dir / file.name)
             new_file.unlink()
             return
 
-        flux_header = vis_header.copy()
+        flux_header = vis.header.copy()
         flux_header["EXTNAME"] = "oi_flux".upper()
+
         flux = fits.BinTableHDU(
             QTable({"WAVELENGTH": [wavelengths * u.um],
                     "FLUXDATA": [flux_data * u.Jy],
                     "FLUXERR": [flux_data * 0.1 * u.Jy]}),
             header=flux_header)
-        hdul.append(flux)
+
+        if "oi_flux" not in hdul:
+            hdul.append(flux)
+        else:
+            try:
+                flux = hdul["oi_flux", index]
+                flux.data["fluxdata"] = flux_data * u.Jy
+                flux.data["fluxerr"] = flux_data * 0.1 * u.Jy
+            except KeyError:
+                hdul.append(flux)
+
         hdul.append(vis)
         hdul.flush()
 

@@ -8,7 +8,7 @@ from matadrs.utils.plot import Plotter
 from tqdm import tqdm
 from uncertainties import unumpy
 
-from utils import average_total_flux, get_model_flux
+from .pionier import delete_add_ins, calculate_vis
 
 
 def read_gravity_data(file: Path, index: Optional[int] = 10):
@@ -21,19 +21,19 @@ def read_gravity_data(file: Path, index: Optional[int] = 10):
     with fits.open(file) as hdul:
         header = hdul[0].header
         print([header[f"hierarch eso det{i} seq1 dit"] for i in range(1, 4)])
-        wave = hdul['oi_wavelength', index].data['eff_wave']*1e6
-        spectre = np.mean(hdul['oi_flux', index].data['flux'], 0)
-        visamp = hdul['oi_vis', index].data['visamp']
-        visphi = hdul['oi_vis', index].data['visphi']
-        closure = hdul['oi_t3', index].data['t3phi'][:, :]
-        ucoord = hdul['oi_vis', index].data['ucoord']
-        vcoord = hdul['oi_vis', index].data['vcoord']
+        wave = hdul["oi_wavelength", index].data["eff_wave"]*1e6
+        spectre = np.mean(hdul["oi_flux", index].data["flux"], 0)
+        visamp = hdul["oi_vis", index].data["visamp"]
+        visphi = hdul["oi_vis", index].data["visphi"]
+        closure = hdul["oi_t3", index].data["t3phi"][:, :]
+        ucoord = hdul["oi_vis", index].data["ucoord"]
+        vcoord = hdul["oi_vis", index].data["vcoord"]
 
         # NOTE: Basename
-        dicname = {i: n for i, n in zip(hdul['oi_array'].data['sta_index'],
-                                        hdul['oi_array'].data['sta_name'])}
-        base = [dicname[i]+'-'+dicname[j] for i, j in hdul['oi_vis', index].data['sta_index']]
-        triplet = [dicname[i] + '-'+dicname[j]+'-'+dicname[k] for i, j, k in hdul['oi_t3', index].data['sta_index']]
+        dicname = {i: n for i, n in zip(hdul["oi_array"].data["sta_index"],
+                                        hdul["oi_array"].data["sta_name"])}
+        base = [dicname[i] + "-" + dicname[j] for i, j in hdul["oi_vis", index].data["sta_index"]]
+        triplet = [dicname[i] + "-" + dicname[j] + "-" + dicname[k] for i, j, k in hdul["oi_t3", index].data["sta_index"]]
     return wave, spectre, visamp, visphi, closure, ucoord, vcoord, base, triplet
 
 
@@ -113,17 +113,7 @@ def make_vis_gravity_files(directory: Path) -> None:
 
 
 if __name__ == "__main__":
-    path = Path("fits") / "GRAVI.2018-06-16T03%3A22%3A27.798_singlescivis_singlesciviscalibrated.fits"
-    flux_file = Path("/Users/scheuck/Data/flux_data/hd148605/HD148605_stellar_model.txt")
-    sci_dir = Path("/Users/scheuck/Data/reduced_data/hd142666/gravity/fits")
-    calibrator = Path("/Users/scheuck/Data/reduced_data/hd142666/gravity/calibrator/HD142666-calibrator.fits")
-    # for fits_file in tqdm(list(sci_dir.glob("*fits"))):
-    # print(fits_file.name)
-    # calibrate_gravity_flux(fits_file, calibrator, flux_file, output_dir=sci_dir / "calibrated")
-    # read_gravity_data(fits_file)
-    # make_vis_gravity_files(Path())
-    # for fits_file in list((sci_dir / "calibrated").glob("*.fits")):
-    #     plot = Plotter(fits_file, save_path=fits_file.parent)
-    #     plot.add_mosaic().plot(margin=0.3, error=True, save=True)
-    # average_total_flux(sci_dir / "calibrated", margin=0.3, error=True, save=True)
-    make_vis_gravity_files(sci_dir / "calibrated" / "flux")
+    directory = Path("/Users/scheuck/Data/reduced_data/hd142527/gravity")
+    flux_file = Path("/Users/scheuck/Data/flux_data/hd142527/hd142527_sed_fit.npy")
+    for fits_file in tqdm(list(directory.glob("*fits"))):
+        calculate_vis(fits_file, flux_file, index=20)
