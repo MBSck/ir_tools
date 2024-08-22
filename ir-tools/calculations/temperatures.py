@@ -7,7 +7,18 @@ import astropy.units as u
 import astropy.constants as const
 import numpy as np
 from astropy.modeling.models import BlackBody
-from ppdmod.utils import load_data, qval_to_opacity, distance_to_angular
+from ppdmod.utils import load_data, qval_to_opacity
+from joblib import Parallel, delayed
+
+
+def integrate_slice(integrand, nu):
+    return np.trapz(integrand, nu, axis=-1)
+
+
+def integrate_values(integrand, nu, n_jobs=6):
+    slices = np.array_split(integrand, n_jobs, axis=0)
+    results = Parallel(n_jobs=n_jobs)(delayed(integrate_slice)(s, nu) for s in slices)
+    return np.concatenate(results, axis=0)
 
 
 def compute_temperature_grid(
@@ -45,12 +56,12 @@ def compute_temperature_grid(
     nu = (const.c / wavelengths.to(u.m)).to(u.Hz)
     radii = np.logspace(np.log10(radial_range[0]), np.log10(radial_range[-1]), radial_dim)
     combined_opacities = (1 - weights[:, np.newaxis]) * silicate_opacities + weights[:, np.newaxis] * continuum_opacities
-    radiation_fields = flux_star * ((distance_to_angular(distance, 2 * radii[:, np.newaxis] * u.au).to(u.rad).value / u.rad) ** 2).to(1/u.sr)
-    p_in = np.trapz(combined_opacities[:, np.newaxis, :] * radiation_fields[np.newaxis, ...], nu, axis=-1)
+    radiation_fields = flux_star * (distance.to(u.au) / radii[:, np.newaxis] * u.au) ** 2
+    p_in = np.trapz((combined_opacities[:, np.newaxis, :] * radiation_fields[np.newaxis, ...]).value, nu.value, axis=-1)
 
     temps = np.arange(temperature_range[0], temperature_range[1] + 1, temperature_steps)[:, np.newaxis]
-    bb = BlackBody(temperature=temps * u.K)(wavelengths)[np.newaxis, ...]
-    p_out = np.trapz(bb * combined_opacities[:, np.newaxis, :], nu, axis=-1)
+    bb = 4 * np.pi * u.sr * BlackBody(temperature=temps * u.K)(wavelengths)[np.newaxis, ...]
+    p_out = integrate_values((bb * combined_opacities[:, np.newaxis, :]).value, nu.value)
     difference = p_in[..., np.newaxis] - p_out[:, np.newaxis, :]
     return weights, radii, temps.flatten()[np.argmin(np.abs(difference), axis=-1)]
 
@@ -67,9 +78,8 @@ if __name__ == "__main__":
     flux = np.interp(wl_cont, wl_flux, flux)
     silicate_op = np.interp(wl_cont, wl_op, silicate_op)
     weights, radii, temperatures = compute_temperature_grid(
-        wl_cont, 158.51 * u.pc, flux * u.Jy,
-        silicate_op, cont_op,
-        radial_dim=1024, temperature_steps=0.01)
+        wl_cont, 158.51 * u.pc, flux * u.Jy, silicate_op, cont_op,
+        radial_dim=1024, temperature_steps=0.1)
 
     data = SimpleNamespace(weights=weights, radii=radii, values=temperatures)
     with open("hd142527_dust_temperatures.npy", "wb") as save_file:
