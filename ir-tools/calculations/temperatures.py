@@ -44,8 +44,8 @@ def compute_temperature_grid(
     weights = np.arange(0, 1.01, weight_steps)
     nu = (const.c / wavelengths.to(u.m)).to(u.Hz)
     radii = np.logspace(np.log10(radial_range[0]), np.log10(radial_range[-1]), radial_dim)
-    combined_opacities = np.array([(1 - w) * silicate_opacities + w * continuum_opacities for w in weights])
-    radiation_fields = flux_star * (distance_to_angular(distance, 2 * radii[:, np.newaxis] * u.au) ** 2).to(u.sr).value / u.sr
+    combined_opacities = (1 - weights[:, np.newaxis]) * silicate_opacities + weights[:, np.newaxis] * continuum_opacities
+    radiation_fields = flux_star * ((distance_to_angular(distance, 2 * radii[:, np.newaxis] * u.au).to(u.rad).value / u.rad) ** 2).to(1/u.sr)
     p_in = np.trapz(combined_opacities[:, np.newaxis, :] * radiation_fields[np.newaxis, ...], nu, axis=-1)
 
     temps = np.arange(temperature_range[0], temperature_range[1] + 1, temperature_steps)[:, np.newaxis]
@@ -68,8 +68,9 @@ if __name__ == "__main__":
     silicate_op = np.interp(wl_cont, wl_op, silicate_op)
     weights, radii, temperatures = compute_temperature_grid(
         wl_cont, 158.51 * u.pc, flux * u.Jy,
-        silicate_op, cont_op, temperature_steps=0.1)
+        silicate_op, cont_op,
+        radial_dim=1024, temperature_steps=0.01)
 
-    data = SimpleNamespace(weights=weights, radii=radii, temperatures=temperatures)
+    data = SimpleNamespace(weights=weights, radii=radii, values=temperatures)
     with open("hd142527_dust_temperatures.npy", "wb") as save_file:
         pickle.dump(data, save_file)
