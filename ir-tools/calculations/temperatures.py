@@ -70,7 +70,8 @@ if __name__ == "__main__":
     data_dir = Path("/Users/scheuck/Data")
     opacity_dir = data_dir / "opacities"
     wl_op, silicate_op = np.load(opacity_dir / "hd142527_boekel_qval_silicates.npy")
-    wl_flux, flux = load_data(data_dir / "flux_data" / "hd142527" / "HD142527_stellar_model.txt")
+    wl_flux, flux = load_data(
+        data_dir / "flux_data" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
     wl_cont, cont_op = load_data(
         opacity_dir / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity)
     ind = np.where(wl_cont <= 14)
@@ -82,5 +83,5 @@ if __name__ == "__main__":
         radial_dim=1024, temperature_steps=0.1)
 
     data = SimpleNamespace(weights=weights, radii=radii, values=temperatures)
-    with open("hd142527_dust_temperatures.npy", "wb") as save_file:
+    with open("hd142527_dust_temperatures.pkl", "wb") as save_file:
         pickle.dump(data, save_file)
