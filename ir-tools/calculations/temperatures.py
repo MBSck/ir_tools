@@ -7,8 +7,9 @@ import astropy.units as u
 import astropy.constants as const
 import numpy as np
 from astropy.modeling.models import BlackBody
-from ppdmod.utils import load_data, qval_to_opacity
 from joblib import Parallel, delayed
+from ppdmod.utils import load_data, qval_to_opacity
+from scipy.interpolate import interp1d
 
 
 def integrate_slice(integrand, nu):
@@ -31,7 +32,8 @@ def compute_temperature_grid(
         weight_steps: Optional[float] = 0.01,
         temperature_steps: Optional[float] = 0.25,
         temperature_range: Optional[List[float]] = [100, 2600],
-        radial_dim: Optional[int] = 512) -> np.ndarray:
+        radial_dim: Optional[int] = 512,
+        ncores: Optional[int] = 6) -> np.ndarray:
     """Computes the dust temperature for an opacity curve and different
     continuum weights for a grid of radii.
 
@@ -61,7 +63,7 @@ def compute_temperature_grid(
 
     temps = np.arange(temperature_range[0], temperature_range[1] + 1, temperature_steps)[:, np.newaxis]
     bb = 4 * np.pi * u.sr * BlackBody(temperature=temps * u.K)(wavelengths)[np.newaxis, ...]
-    p_out = integrate_values((bb * combined_opacities[:, np.newaxis, :]).value, nu.value)
+    p_out = integrate_values((bb * combined_opacities[:, np.newaxis, :]).value, nu.value, njobs=ncores)
     difference = p_in[..., np.newaxis] - p_out[:, np.newaxis, :]
     return weights, radii, temps.flatten()[np.argmin(np.abs(difference), axis=-1)]
 
@@ -74,12 +76,21 @@ if __name__ == "__main__":
         data_dir / "flux_data" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
     wl_cont, cont_op = load_data(
         opacity_dir / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity)
-    ind = np.where(wl_cont <= 14)
-    wl_cont, cont_op = wl_cont[ind], cont_op[ind]
-    flux = np.interp(wl_cont, wl_flux, flux)
-    silicate_op = np.interp(wl_cont, wl_op, silicate_op)
+
+    silicate_op = interp1d(wl_op, silicate_op, kind="cubic", fill_value="extrapolate")(wl_flux)
+    cont_op = interp1d(wl_cont, cont_op, kind="cubic", fill_value="extrapolate")(wl_flux)
+    silicate_op[silicate_op < 0] = 0
+    cont_op[cont_op < 0] = 0
+
+    # import matplotlib.pyplot as plt
+    # plt.plot(wl_flux, silicate_op, label="Silicate")
+    # plt.plot(wl_flux, cont_op, label="Continuum")
+    # plt.yscale("log")
+    # plt.legend()
+    # plt.savefig("opacities.png", format="png", dpi=300)
+
     weights, radii, temperatures = compute_temperature_grid(
-        wl_cont, 158.51 * u.pc, flux * u.Jy, silicate_op, cont_op,
+        wl_flux, 158.51 * u.pc, flux * u.Jy, silicate_op, cont_op,
         radial_dim=1024, temperature_steps=0.1)
 
     data = SimpleNamespace(weights=weights, radii=radii, values=temperatures)
