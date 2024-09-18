@@ -135,6 +135,8 @@ def plot_used_opacities(directory: Path,
                         linestyles: List[str],
                         band: Optional[str] = "nband",
                         filetype: Optional[str] = "qval",
+                        fig: Optional[plt.Figure] = None,
+                        axarr: Optional[List[plt.Axes]] = None,
                         wavelength_span: Optional[List[float]] = None):
     """Plots the used opacities.
 
@@ -150,20 +152,29 @@ def plot_used_opacities(directory: Path,
     if wavelength_span is None:
         wavelength_span = [7.9, 13.9] if band == "nband" else [3.5, 4.5]
 
-    fig, axarr = plt.subplots(len(opacity_files), 1, figsize=(7, 7))
+    if fig is None:
+        fig, axarr = plt.subplots(len(opacity_files), 1,
+                                  figsize=(7, 14), sharex=True)
+
     axarr = axarr.flatten()
     for ax_index, (name, files) in enumerate(opacity_files.items()):
         for file_index, (file, used) in enumerate(files):
             color = "k" if not used else "r"
-            if filetype in ["optool", "grf"]:
-                skiprows = 2 if filetype == "optool" else 0
-                wavelength_grid, opacity, _, _ = np.loadtxt(
+            if filetype == "optool":
+                wavelength_grid, opacity, *_ = np.loadtxt(
                         directory / file, unpack=True,
-                        comments="#", skiprows=skiprows)
+                        comments="#", skiprows=2)
+                wavelength_grid *= u.um
+                opacity *= u.cm**2/u.g
+            elif filetype == "grf":
+                wavelength_grid, _, opacity, *_ = np.loadtxt(
+                        directory / file, unpack=True,
+                        comments="#", skiprows=0)
                 wavelength_grid *= u.um
                 opacity *= u.cm**2/u.g
             else:
                 wavelength_grid, opacity = qval_to_opacity(directory / file)
+
             indices = np.where(
                 np.logical_and(wavelength_grid > wavelength_span[0]*u.um,
                                wavelength_grid < wavelength_span[1]*u.um))[0]
@@ -178,14 +189,12 @@ def plot_used_opacities(directory: Path,
                                      transform=axarr[ax_index].transAxes)
                 if ax_index == 0:
                     axarr[ax_index].legend(loc="upper left")
-            if ax_index == (len(qval_files)-1):
-                axarr[ax_index].set_xlabel(r"$\lambda$ ($\mu$m)")
-            else:
-                axarr[ax_index].tick_params(axis="x", which="both", labelbottom=False)
+
+    axarr[-1].set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
     fig.text(0.02, 0.5, r"$\kappa_{abs}$ (cm$^2$g$^{-1}$)", va="center", rotation="vertical")
     plt.subplots_adjust(
         left=0.12, right=0.98, wspace=0.3, bottom=0.07, top=0.98)
-    plt.savefig("used_opacities.pdf", format="pdf")
+    plt.savefig("dust_species.pdf", format="pdf")
 
 
 if __name__ == "__main__":
@@ -219,15 +228,30 @@ if __name__ == "__main__":
     grf_dir = Path("/Users/scheuck/Data/opacities/GRF")
     grf_files = {"Olivine": [["MgOlivine0.1.Combined.Kappa", True],
                              ["MgOlivine2.0.Combined.Kappa", True]],
-                 "Pyroxene": [["MgPyroxene0.1.Combined.Kappa", False],
+                 "Pyroxene": [["MgPyroxene0.1.Combined.Kappa", True],
                               ["MgPyroxene2.0.Combined.Kappa", True]],
                  "Forsterite": [["Forsterite0.1.Combined.Kappa", True],
                                 ["Forsterite2.0.Combined.Kappa", True]],
-                 "Enstatite": [["Enstatite0.1.Combined.Kappa", False],
-                               ["Enstatite2.0.Combined.Kappa", True]],
-                 "Carbon": [["SiC0.1.Combined.Kappa", True],
-                            ["SiC2.0.Combined.Kappa", False]]}
-    labels = [r"0.1 $ \mu $m", r"1.5 $ \mu $m"]
+                 "Enstatite": [["Enstatite0.1.Combined.Kappa", True],
+                               ["Enstatite2.0.Combined.Kappa", True]]}
+    optool_dir = Path("/Users/scheuck/Data/opacities/optool")
+    optool_carbon = optool_dir / "preibisch_amorph_c_rv0.1.npy"
+
+    labels = [r"0.1 $ \mu $m", r"2.0 $ \mu $m"]
     linestyles = ["-", "--"]
-    plot_used_opacities(qval_dir, qval_files, filetype="qval",
-                        labels=labels, linestyles=linestyles)
+    fig, axarr = plt.subplots(len(grf_files.values()) + 1,
+                              1, figsize=(14, 14), sharex=True)
+    axarr[-1].text(0.85, 0.85, "Carbon", size=15,
+                   ha="center", va="center",
+                   transform=axarr[-1].transAxes)
+    wl, op = np.load(optool_carbon)
+    wl *= u.um
+    indices = np.where(np.logical_and(wl > 7.9 * u.um, wl < 13.9 * u.um))[0]
+    wl, op = wl[indices], op[indices]
+    axarr[-1].plot(wl, op, c="red", label=labels[0], linestyle=linestyles[0])
+    plot_used_opacities(grf_dir, grf_files, filetype="grf",
+                        labels=labels, linestyles=linestyles,
+                        fig=fig, axarr=axarr)
+
+
+

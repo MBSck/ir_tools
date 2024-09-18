@@ -18,7 +18,7 @@ def ptform():
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/2024-08-22/results_model_14:42:00")
+    path = Path("/Users/scheuck/Data/model_results/2024-08-26/results_model_00:00:56")
     fit_plot_dir = path / "fits"
     fit_plot_dir.mkdir(exist_ok=True, parents=True)
     data_plot_dir = path / "data"
@@ -60,22 +60,23 @@ if __name__ == "__main__":
                                  wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
     data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
     component_labels, components, sampler = restore_from_fits(path)
-    rchi_sq = compute_observable_chi_sq(
-            *compute_observables(components), reduced=True)
-    print(f"rchi_sq: {rchi_sq:.2f}")
+    # rchi_sq = compute_observable_chi_sq(
+    #         *compute_observables(components), reduced=True)
+    # print(f"rchi_sq: {rchi_sq:.2f}")
 
+    # TODO: Save these as well in the fits file? Maybe even the sampler?
     labels, units = np.load(path / "labels.npy"), np.load(path / "units.npy", allow_pickle=True)
-    plot_corner(sampler, labels, units, savefig=fit_plot_dir / "corner.pdf")
+    # plot_corner(sampler, labels, units, savefig=fit_plot_dir / "corner.pdf")
     # plot_chains(sampler, labels, units, savefig=fit_plot_dir / "chains.pdf")
 
-    plot_overview(savefig=data_plot_dir / "data_overview.pdf")
-    plot_fit(components=components, savefig=fit_plot_dir / "fit_results.pdf")
+    # plot_overview(savefig=data_plot_dir / "data_overview.pdf")
+    # plot_fit(components=components, savefig=fit_plot_dir / "fit_results.pdf")
     plot_component_mosaic(components, dim, 0.1, norm=0.2,
                           savefig=fit_plot_dir / "mosaic_model.pdf", zoom=8)
-    plot_sed([1, 13.5] * u.um, components, scaling="nu", save_dir=fit_plot_dir)
-    plot_sed([1, 13.5] * u.um, components, scaling=None, save_dir=fit_plot_dir)
-    plot_intermediate_products(dim, wavelength, components,
-                               component_labels, save_dir=fit_plot_dir)
+    # plot_sed([1, 13.5] * u.um, components, scaling="nu", save_dir=fit_plot_dir)
+    # plot_sed([1, 13.5] * u.um, components, scaling=None, save_dir=fit_plot_dir)
+    # plot_intermediate_products(dim, wavelength, components,
+    #                            component_labels, save_dir=fit_plot_dir)
     # plot_interferometric_observables([1, 13.5]*u.um, components,
     #                                  component_labels, save_dir=fit_plot_dir)
 
