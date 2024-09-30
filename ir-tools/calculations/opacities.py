@@ -27,8 +27,7 @@ if __name__ == "__main__":
         data_dir, weights, sizes, names, "qval", fmaxs=fmaxs, fill_value="extrapolate")
 
     lower_ind = np.where(wl_qval < wl_boekel[0])[0]
-    upper_ind = np.where(wl_qval > wl_boekel[0])[0]
 
-    wl = np.concatenate((wl_qval[lower_ind], wl_boekel, wl_qval[upper_ind]), axis=0)
-    opacity = np.concatenate((opacity_qval[lower_ind], opacity_boekel, wl_qval[upper_ind]), axis=0)
+    wl = np.concatenate((wl_qval[lower_ind], wl_boekel), axis=0)
+    opacity = np.concatenate((opacity_qval[lower_ind], opacity_boekel), axis=0)
     np.save("hd142527_boekel_qval_silicates.npy", np.array([wl, opacity]))
