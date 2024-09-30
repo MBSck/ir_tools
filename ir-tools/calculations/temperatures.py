@@ -77,17 +77,28 @@ if __name__ == "__main__":
     wl_cont, cont_op = load_data(
         opacity_dir / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity)
 
+    import matplotlib.pyplot as plt
+    fig, (ax, bx) = plt.subplots(1, 2, sharey=True, sharex=True, figsize=(12, 6))
+    ax.plot(wl_op, silicate_op, label="Silicate")
+    ax.plot(wl_cont, cont_op, label="Continuum")
+    ax.set_yscale("log")
+    ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+    ax.set_ylabel(r"$\kappa$ (cm$^2$ g$^{-1}$")
+    ax.set_xlim([-5, 100])
+
     silicate_op = interp1d(wl_op, silicate_op, kind="cubic", fill_value="extrapolate")(wl_flux)
     cont_op = interp1d(wl_cont, cont_op, kind="cubic", fill_value="extrapolate")(wl_flux)
     silicate_op[silicate_op < 0] = 0
     cont_op[cont_op < 0] = 0
 
-    # import matplotlib.pyplot as plt
-    # plt.plot(wl_flux, silicate_op, label="Silicate")
-    # plt.plot(wl_flux, cont_op, label="Continuum")
-    # plt.yscale("log")
-    # plt.legend()
-    # plt.savefig("opacities.png", format="png", dpi=300)
+    bx.plot(wl_flux, silicate_op, label="Silicate")
+    bx.plot(wl_flux, cont_op, label="Continuum")
+    bx.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+    bx.set_yscale("log")
+    bx.legend()
+    # plt.show()
+    plt.savefig("opacities.png", format="png", dpi=300)
+    breakpoint()
 
     weights, radii, temperatures = compute_temperature_grid(
         wl_flux, 158.51 * u.pc, flux * u.Jy, silicate_op, cont_op,
