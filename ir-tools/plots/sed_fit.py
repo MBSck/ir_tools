@@ -8,8 +8,7 @@ from ppdmod.data import set_data
 from ppdmod.options import OPTIONS
 from ppdmod.plot import plot_overview, plot_sed, plot_corner
 
-from ..tables.plot_fit_parameters import plot_fit_parameters
-breakpoint()
+from ..tables import best_fit_parameters
 
 
 def ptform():
@@ -17,10 +16,10 @@ def ptform():
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-02/")
-    # dir_name = "averaged"
+    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-04/")
+    dir_name = "averaged"
     # dir_name =  "only_low"
-    dir_name =  "downsampled"
+    # dir_name =  "downsampled"
     # dir_name =  "only_high"
 
     path = path / dir_name
@@ -44,8 +43,8 @@ if __name__ == "__main__":
                        sharex=True, share_legend=True, save=True)
 
     # TODO: Save these as well in the fits file? Maybe even the sampler?
-    labels, units = np.load(path / "labels.npy").tolist(), np.load(path / "units.npy", allow_pickle=True)
     component_labels, components, sampler = restore_from_fits(path)
+    labels, units = np.load(path / "labels.npy").tolist(), np.load(path / "units.npy", allow_pickle=True)
 
     theta, uncertainties = get_best_fit(sampler)
     print(f"Best fit parameters:\n{np.array(theta)}")
@@ -61,7 +60,10 @@ if __name__ == "__main__":
 
     dim = 1024
     plot_overview(savefig=data_plot_dir / f"data_overview_{dir_name}.pdf")
-    plot_fit_parameters(components, savefig=fit_plot_dir / f"fit_parameters_{dir_name}.pdf")
+    best_fit_parameters(components, save_as_latex=False,
+                        savefig=fit_plot_dir / f"sed_fit_parameters_{dir_name}.pdf")
+    best_fit_parameters(components, save_as_latex=True,
+                        savefig=fit_plot_dir / f"sed_fit_parameters_{dir_name}.csv")
 
     plot_sed([7.9, 13.15] * u.um, components, scaling="nu", save_dir=fit_plot_dir)
     plot_sed([7.9, 13.15] * u.um, components, scaling=None, save_dir=fit_plot_dir)
