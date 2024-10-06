@@ -8,8 +8,7 @@ import astropy.constants as const
 import numpy as np
 from astropy.modeling.models import BlackBody
 from joblib import Parallel, delayed
-from ppdmod.utils import load_data, qval_to_opacity
-from scipy.interpolate import interp1d
+from ppdmod.utils import load_data
 
 
 def integrate_slice(integrand, nu):
@@ -77,12 +76,25 @@ if __name__ == "__main__":
     wl_cont, cont_op = np.load(data_dir / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy")
 
     import matplotlib.pyplot as plt
-    plt.plot(wl_op, silicate_op, label="Silicate")
-    plt.plot(wl_cont, cont_op, label="Continuum")
-    plt.yscale("log")
-    plt.xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-    plt.ylabel(r"$\kappa$ (cm$^2$ g$^{-1})$")
-    plt.xlim([-5, 100])
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(12, 6), sharey=True, sharex=True)
+    ax.plot(wl_op, silicate_op, label="Silicate")
+    ax.plot(wl_cont, cont_op, label="Continuum")
+    ax.set_yscale("log")
+    ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+    ax.set_ylabel(r"$\kappa$ (cm$^2$ g$^{-1})$")
+    ax.set_xlim([-5, 100])
+
+    # TODO: Should I use smooth interpolation here? Check
+    # Also recalculate the preibisch grid and just interpolate here instead of saving it interpolated
+    silicate_op = np.interp(wl_flux, wl_op, silicate_op)
+    cont_op = np.interp(wl_flux, wl_cont, cont_op)
+
+    bx.plot(wl_flux, silicate_op, label="Silicate")
+    bx.plot(wl_flux, cont_op, label="Continuum")
+    bx.set_yscale("log")
+    bx.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+    bx.set_ylabel(r"$\kappa$ (cm$^2$ g$^{-1})$")
+    bx.set_xlim([-5, 100])
     plt.savefig("opacities.pdf", format="pdf")
 
     weights, radii, temperatures = compute_temperature_grid(
