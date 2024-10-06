@@ -15,9 +15,9 @@ def integrate_slice(integrand, nu):
     return np.trapz(integrand, nu, axis=-1)
 
 
-def integrate_values(integrand, nu, n_jobs=6):
-    slices = np.array_split(integrand, n_jobs, axis=0)
-    results = Parallel(n_jobs=n_jobs)(delayed(integrate_slice)(s, nu) for s in slices)
+def integrate_values(integrand, nu, njobs=6):
+    slices = np.array_split(integrand, njobs, axis=0)
+    results = Parallel(n_jobs=njobs)(delayed(integrate_slice)(s, nu) for s in slices)
     return np.concatenate(results, axis=0)
 
 
@@ -68,8 +68,8 @@ def compute_temperature_grid(
 
 
 if __name__ == "__main__":
-    data_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data")
-    # data_dir = Path("/Users/scheuck/Data")
+    # data_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data")
+    data_dir = Path("/Users/scheuck/Data")
     opacity_dir = data_dir / "opacities"
     wl_op, silicate_op = np.load(opacity_dir / "hd142527_combined_silicate_opacities.npy")
     wl_flux, flux = load_data(
