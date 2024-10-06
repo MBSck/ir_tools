@@ -71,34 +71,19 @@ def compute_temperature_grid(
 if __name__ == "__main__":
     data_dir = Path("/Users/scheuck/Data")
     opacity_dir = data_dir / "opacities"
-    wl_op, silicate_op = np.load(opacity_dir / "hd142527_boekel_qval_silicates.npy")
+    wl_op, silicate_op = np.load(opacity_dir / "hd142527_combined_silicate_opacities.npy")
     wl_flux, flux = load_data(
         data_dir / "flux_data" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
-    wl_cont, cont_op = load_data(
-        opacity_dir / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity)
+    wl_cont, cont_op = np.load(data_dir / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy")
 
     import matplotlib.pyplot as plt
-    fig, (ax, bx) = plt.subplots(1, 2, sharey=True, sharex=True, figsize=(12, 6))
-    ax.plot(wl_op, silicate_op, label="Silicate")
-    ax.plot(wl_cont, cont_op, label="Continuum")
-    ax.set_yscale("log")
-    ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-    ax.set_ylabel(r"$\kappa$ (cm$^2$ g$^{-1}$")
-    ax.set_xlim([-5, 100])
-
-    silicate_op = interp1d(wl_op, silicate_op, kind="cubic", fill_value="extrapolate")(wl_flux)
-    cont_op = interp1d(wl_cont, cont_op, kind="cubic", fill_value="extrapolate")(wl_flux)
-    silicate_op[silicate_op < 0] = 0
-    cont_op[cont_op < 0] = 0
-
-    bx.plot(wl_flux, silicate_op, label="Silicate")
-    bx.plot(wl_flux, cont_op, label="Continuum")
-    bx.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-    bx.set_yscale("log")
-    bx.legend()
-    # plt.show()
-    plt.savefig("opacities.png", format="png", dpi=300)
-    breakpoint()
+    plt.plot(wl_op, silicate_op, label="Silicate")
+    plt.plot(wl_cont, cont_op, label="Continuum")
+    plt.yscale("log")
+    plt.xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+    plt.ylabel(r"$\kappa$ (cm$^2$ g$^{-1})$")
+    plt.xlim([-5, 100])
+    plt.savefig("opacities.pdf", format="pdf")
 
     weights, radii, temperatures = compute_temperature_grid(
         wl_flux, 158.51 * u.pc, flux * u.Jy, silicate_op, cont_op,
