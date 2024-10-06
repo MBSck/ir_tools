@@ -52,6 +52,10 @@ if __name__ == "__main__":
     indices = list(map(labels.index, filter(lambda x: "weight" in x and "pah" not in x, labels)))
     print(f"Normed sum: {np.array(theta)[indices].sum()}")
 
+    silicate_weights = np.array(theta)[indices[1:]]
+    np.save(fit_plot_dir / "silicate_labels_and_weights",
+            [np.array(labels)[indices[1:]], silicate_weights / silicate_weights.sum() * 1e2])
+
     rchi_sq = compute_sed_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
