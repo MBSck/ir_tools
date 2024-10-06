@@ -68,11 +68,12 @@ def compute_temperature_grid(
 
 
 if __name__ == "__main__":
-    data_dir = Path("/Users/scheuck/Data")
+    data_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data")
+    # data_dir = Path("/Users/scheuck/Data")
     opacity_dir = data_dir / "opacities"
     wl_op, silicate_op = np.load(opacity_dir / "hd142527_combined_silicate_opacities.npy")
     wl_flux, flux = load_data(
-        data_dir / "flux_data" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
+        data_dir / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
     wl_cont, cont_op = np.load(data_dir / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy")
 
     import matplotlib.pyplot as plt
@@ -99,7 +100,7 @@ if __name__ == "__main__":
 
     weights, radii, temperatures = compute_temperature_grid(
         wl_flux, 158.51 * u.pc, flux * u.Jy, silicate_op, cont_op,
-        radial_dim=1024, temperature_steps=0.1)
+        radial_dim=1024, temperature_steps=0.1, ncores=50)
 
     data = SimpleNamespace(weights=weights, radii=radii, values=temperatures)
     with open("hd142527_dust_temperatures.pkl", "wb") as save_file:
