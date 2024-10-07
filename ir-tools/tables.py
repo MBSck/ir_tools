@@ -106,22 +106,21 @@ def read_dust_species_to_table(
     df.to_csv("dust_species.csv", index=False, header=False)
 
 
-def best_fit_parameters(components: List[Component], savefig: Path,
-                        save_as_latex: Optional[bool] = True) -> None:
+def best_fit_parameters(labels: np.ndarray, units: np.ndarray,
+                        values: np.ndarray,
+                        uncertainties: Optional[np.ndarray] = None,
+                        savefig: Optional[Path] = None,
+                        save_as_csv: Optional[bool] = True) -> None:
     """Make a (.pdf) file containing a table of the fit parameters."""
-    if len(components) == 1:
-        params = components[0].get_params(free=True)
-    else:
-        params = {}
-        # TODO: This needs to be finished
-        # for index, component in enumerate(components, start=1):
-        #     test = component.get_params(free=True)
+    labels, units = format_labels(labels, units, split=True)
+    uncertainties = np.round(np.abs(uncertainties - values[:, np.newaxis]), 2)
+    values = [f"{value:.2e}" if np.abs(value) < 1e-2 else f"{value:.2f}" for value in values]
 
-    labels = format_labels(list(params.keys()))
-    values = np.round(list(map(lambda x: x.value, params.values())), 2)
-    units = list(map(lambda x: x.unit, params.values()))
+    if uncertainties is not None:
+        values = [f"${{{value}}}_{{-{uncertainty[0]}}}^{{+{uncertainty[1]}}}$"
+                  for value, uncertainty in zip(values, uncertainties)]
 
-    if save_as_latex:
+    if save_as_csv:
         data = {"Parameter": labels, "Unit": units, "Value": values}
         df = pd.DataFrame(data)
         df.to_csv(savefig, index=False, header=False, sep=";")
@@ -134,7 +133,7 @@ def best_fit_parameters(components: List[Component], savefig: Path,
                 table.add_hline()
 
                 for label, unit, value in zip(labels, units, values):
-                    table.add_row((NoEscape(label), f"({unit})", value))
+                    table.add_row((NoEscape(label), NoEscape(unit), value))
 
                 table.add_hline()
 

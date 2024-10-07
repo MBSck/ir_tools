@@ -16,7 +16,7 @@ def ptform():
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-04/")
+    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-07/")
     dir_name = "averaged"
     # dir_name =  "only_low"
     # dir_name =  "downsampled"
@@ -64,9 +64,9 @@ if __name__ == "__main__":
 
     dim = 1024
     plot_overview(savefig=data_plot_dir / f"data_overview_{dir_name}.pdf")
-    best_fit_parameters(components, save_as_latex=False,
+    best_fit_parameters(labels, units, theta, save_as_csv=False,
                         savefig=fit_plot_dir / f"sed_fit_parameters_{dir_name}.pdf")
-    best_fit_parameters(components, save_as_latex=True,
+    best_fit_parameters(labels, units, theta, save_as_csv=True,
                         savefig=fit_plot_dir / f"sed_fit_parameters_{dir_name}.csv")
 
     plot_sed([7.9, 13.15] * u.um, components, scaling="nu", save_dir=fit_plot_dir)

@@ -9,23 +9,24 @@ from ppdmod.options import OPTIONS
 from ppdmod.plot import plot_component_mosaic, \
     plot_fit, plot_interferometric_observables, \
     plot_overview, plot_sed, plot_intermediate_products, \
-    plot_corner, plot_chains
+    plot_corner, plot_chains, get_best_fit
 from ppdmod.fitting import compute_observables, compute_observable_chi_sq
 
+from ..tables import best_fit_parameters
 
 def ptform():
     pass
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/2024-08-26/results_model_00:00:56")
+    path = Path("/Users/scheuck/Data/model_results/disc_fits/2024-10-07/results_model_00:15:17")
     fit_plot_dir = path / "fits"
     fit_plot_dir.mkdir(exist_ok=True, parents=True)
     data_plot_dir = path / "data"
     data_plot_dir.mkdir(exist_ok=True, parents=True)
 
     data_dir = Path("/Users/scheuck/Data/fitting_data/hd142527")
-    wavelengths = {"hband": [1.7]*u.um, "kband": [2.15]*u.um,
+    wavelengths = {"hband": [1.7] * u.um, "kband": [2.15] * u.um,
                    "lband": np.linspace(3.3, 3.8, 5) * u.um,
                    "mband": np.linspace(4.6, 4.9, 3) * u.um,
                    "nband": np.linspace(8, 13, 35) * u.um,
@@ -60,9 +61,10 @@ if __name__ == "__main__":
                                  wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
     data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
     component_labels, components, sampler = restore_from_fits(path)
-    # rchi_sq = compute_observable_chi_sq(
-    #         *compute_observables(components), reduced=True)
-    # print(f"rchi_sq: {rchi_sq:.2f}")
+    theta, uncertainties = get_best_fit(sampler)
+    rchi_sq = compute_observable_chi_sq(
+            *compute_observables(components), reduced=True)
+    print(f"rchi_sq: {rchi_sq:.2f}")
 
     # TODO: Save these as well in the fits file? Maybe even the sampler?
     labels, units = np.load(path / "labels.npy"), np.load(path / "units.npy", allow_pickle=True)
@@ -70,9 +72,14 @@ if __name__ == "__main__":
     # plot_chains(sampler, labels, units, savefig=fit_plot_dir / "chains.pdf")
 
     # plot_overview(savefig=data_plot_dir / "data_overview.pdf")
+    best_fit_parameters(labels, units, theta, save_as_csv=False,
+                        savefig=fit_plot_dir / "disc_fit_parameters.pdf")
+    best_fit_parameters(labels, units, theta, save_as_csv=True,
+                        savefig=fit_plot_dir / "disc_fit_parameters.csv")
+
     # plot_fit(components=components, savefig=fit_plot_dir / "fit_results.pdf")
-    plot_component_mosaic(components, dim, 0.1, norm=0.2,
-                          savefig=fit_plot_dir / "mosaic_model.pdf", zoom=8)
+    # plot_component_mosaic(components, dim, 0.1, norm=0.2,
+    #                       savefig=fit_plot_dir / "mosaic_model.pdf", zoom=8)
     # plot_sed([1, 13.5] * u.um, components, scaling="nu", save_dir=fit_plot_dir)
     # plot_sed([1, 13.5] * u.um, components, scaling=None, save_dir=fit_plot_dir)
     # plot_intermediate_products(dim, wavelength, components,
