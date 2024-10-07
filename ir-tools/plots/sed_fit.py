@@ -22,11 +22,10 @@ if __name__ == "__main__":
     # dir_name =  "downsampled"
     # dir_name =  "only_high"
 
-    path = path / dir_name
-    fit_plot_dir = path / "fits"
-    fit_plot_dir.mkdir(exist_ok=True, parents=True)
-    data_plot_dir = path / "data"
-    data_plot_dir.mkdir(exist_ok=True, parents=True)
+    path /= dir_name
+    plot_dir, assets_dir = path / "plots", path / "assets"
+    plot_dir.mkdir(exist_ok=True, parents=True)
+    assets_dir.mkdir(exist_ok=True, parents=True)
 
     OPTIONS.model.output = "non-normed"
     data_dir = Path("/Users/scheuck/Data/fitting_data/hd142527")
@@ -42,9 +41,9 @@ if __name__ == "__main__":
                        margin=0.3, legend_size="medium",
                        sharex=True, share_legend=True, save=True)
 
-    # TODO: Save these as well in the fits file? Maybe even the sampler?
     component_labels, components, sampler = restore_from_fits(path)
-    labels, units = np.load(path / "labels.npy").tolist(), np.load(path / "units.npy", allow_pickle=True)
+    labels = np.load(path / "labels.npy").tolist()
+    units = np.load(path / "units.npy", allow_pickle=True)
 
     theta, uncertainties = get_best_fit(sampler)
     print(f"Best fit parameters:\n{np.array(theta)}")
@@ -53,21 +52,18 @@ if __name__ == "__main__":
     print(f"Normed sum: {np.array(theta)[indices].sum()}")
 
     silicate_weights = np.array(theta)[indices[1:]]
-    np.save(fit_plot_dir / "silicate_labels_and_weights",
+    np.save(assets_dir / "silicate_labels_and_weights.npy",
             [np.array(labels)[indices[1:]], silicate_weights / silicate_weights.sum() * 1e2])
 
     rchi_sq = compute_sed_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
-    plot_corner(sampler, labels, units, savefig=fit_plot_dir / f"corner_{dir_name}.pdf")
-
     dim = 1024
-    plot_overview(savefig=data_plot_dir / f"data_overview_{dir_name}.pdf")
-    best_fit_parameters(labels, units, theta, save_as_csv=False,
-                        savefig=fit_plot_dir / f"sed_fit_parameters_{dir_name}.pdf")
-    best_fit_parameters(labels, units, theta, save_as_csv=True,
-                        savefig=fit_plot_dir / f"sed_fit_parameters_{dir_name}.csv")
+    plot_corner(sampler, labels, units, savefig=plot_dir / "corner.pdf")
+    plot_overview(savefig=plot_dir / "data_overview.pdf")
+    best_fit_parameters(labels, units, theta, uncertainties,
+                        save_as_csv=True, savefig=assets_dir / "sed.csv")
 
-    plot_sed([7.9, 13.15] * u.um, components, scaling="nu", save_dir=fit_plot_dir)
-    plot_sed([7.9, 13.15] * u.um, components, scaling=None, save_dir=fit_plot_dir)
+    plot_sed([7.9, 13.15] * u.um, components, scaling="nu", save_dir=plot_dir)
+    plot_sed([7.9, 13.15] * u.um, components, scaling=None, save_dir=plot_dir)
