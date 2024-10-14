@@ -5,12 +5,9 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 from matadrs.utils.readout import ReadoutFits
-from ppdmod.analysis import restore_from_fits
-from ppdmod.component import Component
 from ppdmod.plot import format_labels
 from pylatex import Document, Section, Tabular
 from pylatex.utils import NoEscape
-
 
 LATTICE_STRUCTURE = {
     "pyroxene": "amorphous",
@@ -29,18 +26,22 @@ CHEMICAL_FORMULAS = {
     }
 
 
-def read_to_table(fits_files: List[Path], save_as_csv: Optional[bool] = False,
-                  savefig: Optional[Path] = False):
+def observations(fits_files: List[Path], savefig: Optional[Path] = None):
     """Read a FITS file and return the data as an astropy table."""
     data = {"instrument": [], "date": [], "seeing": [], "tau0": [],
             "stations": [], "array": [], "name": [], "ldd": [],
             "time": [], "resolution": [], "comment": []}
 
+    already_added = set()
     for fits_file in fits_files:
         readout = ReadoutFits(fits_file)
+        date = "T".join([readout.date.split("T")[0], readout.date.split("T")[1][:8]])
+        if date in already_added:
+            continue
 
+        already_added.add(date)
         data["instrument"].append(readout.instrument_mode.upper())
-        data["date"].append(readout.date[:-8])
+        data["date"].append(date)
         data["seeing"].append(round(readout.seeing, 1))
         data["tau0"].append(round(readout.tau0, 1))
         data["stations"].append(readout.stations)
@@ -68,10 +69,11 @@ def read_to_table(fits_files: List[Path], save_as_csv: Optional[bool] = False,
         data["resolution"].append(resolution)
 
     df = pd.DataFrame(data).sort_values(by="date")
-    df.to_csv("observations.csv", index=False, header=False)
+    df.to_csv(savefig if savefig is not None else "observations.csv",
+              index=False, header=False)
 
 
-def read_dust_species_to_table(
+def dust_species(
         weights: np.ndarray, names: List[str],
         methods: List[str], sizes: List[float],
         fmaxs: Optional[List[float]] = None) -> None:
@@ -141,7 +143,6 @@ def best_fit_parameters(labels: np.ndarray, units: np.ndarray,
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-02/downsampled")
-    component_labels, components = restore_from_fits(path)
-    make_fit_parameters_table(components)
+    fits_files = list(Path("/Users/scheuck/Data/fitting_data/hd142527").glob("*.fits"))
+    observations(fits_files)
 
