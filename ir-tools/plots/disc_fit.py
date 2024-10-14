@@ -19,7 +19,7 @@ def ptform():
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/disc_fits/2024-10-07/results_model_17:47:37")
+    path = Path("/Users/scheuck/Data/model_results/disc_fits/2024-10-07/results_model_19:19:59")
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
     assets_dir.mkdir(exist_ok=True, parents=True)

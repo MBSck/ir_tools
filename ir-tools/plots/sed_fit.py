@@ -16,10 +16,10 @@ def ptform():
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-07/")
-    dir_name = "averaged"
+    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-08/")
+    # dir_name = "averaged"
     # dir_name =  "only_low"
-    # dir_name =  "downsampled"
+    dir_name =  "downsampled"
     # dir_name =  "only_high"
 
     path /= dir_name
@@ -41,7 +41,7 @@ if __name__ == "__main__":
                        margin=0.3, legend_size="medium",
                        sharex=True, share_legend=True, save=True)
 
-    component_labels, components, sampler = restore_from_fits(path)
+    component_labels, components, sampler = restore_from_fits(path, "sed.fits")
     labels = np.load(path / "labels.npy").tolist()
     units = np.load(path / "units.npy", allow_pickle=True)
 
