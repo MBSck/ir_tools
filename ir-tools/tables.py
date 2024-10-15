@@ -1,4 +1,5 @@
 import string
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
@@ -26,6 +27,7 @@ CHEMICAL_FORMULAS = {
     }
 
 
+# TODO: Finish this (there are still multiple files of the same name)
 def observations(fits_files: List[Path], savefig: Optional[Path] = None):
     """Read a FITS file and return the data as an astropy table."""
     data = {"instrument": [], "date": [], "seeing": [], "tau0": [],
@@ -35,7 +37,13 @@ def observations(fits_files: List[Path], savefig: Optional[Path] = None):
     already_added = set()
     for fits_file in fits_files:
         readout = ReadoutFits(fits_file)
-        date = "T".join([readout.date.split("T")[0], readout.date.split("T")[1][:8]])
+        time = datetime.strptime(readout.date.split("T")[1],
+                                 '%H:%M:%S.%f' if "." in readout.date else '%H:%M:%S')
+        if time.microsecond >= 500000:
+            time = time + timedelta(seconds=1)
+        time = time.replace(microsecond=0)
+
+        date = "T".join([readout.date.split("T")[0], str(time.time())])
         if date in already_added:
             continue
 
