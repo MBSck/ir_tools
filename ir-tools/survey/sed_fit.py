@@ -7,6 +7,32 @@ import oimodeler as oim
 from astropy.modeling.models import BlackBody
 
 
+def reparametrise_sum_to_one(keys: np.ndarray, theta: np.ndarray):
+    indices = list(map(keys.index, filter(lambda x: "weight" in x, keys)))
+    normed_params = [theta[indices][0] / 1e2]
+    for param in theta[indices][1:] / 1e2:
+        normed_params.append(param * (1 - np.sum(normed_params)))
+
+    params = theta.copy()
+    params[indices] = np.array(normed_params) * 1e2
+    return params
+
+
+def _logProbability(self, theta: np.ndarray):
+    for iparam, parami in enumerate(self.freeParams.values()):
+        parami.value = theta[iparam]
+
+    theta = reparametrise_sum_to_one(list(self.freeParams.keys()), theta)
+    for i, key in enumerate(self.freeParams):
+        val = theta[i]
+        low, up = self.limits[key]
+        if not low < val < up:
+            return -np.inf
+
+    self.simulator.compute(computeChi2=True, dataTypes=self.dataTypes)
+    return -0.5 * self.simulator.chi2
+
+
 class oimSED(oim.oimPt):
     name = "SED"
     shortname = "SED"
@@ -14,61 +40,68 @@ class oimSED(oim.oimPt):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
-        self.tempc = oim.oimParam(**oim._standardParameters["amp"])
-        self.tempc.description = "Characterizes the temperature."
-        self.tempc.set(min=0, max=1500)
-        self.tempc.unit = u.K
+        self.params["f"].free = False
 
-        self.offset = oim.oimParam(**oim._standardParameters["amp"])
-        self.offset.description = "The offset for the weights"
-        self.offset.set(min=16, max=20)
+        self.params["tempc"] = oim.oimParam(**oim._standardParameters["amp"])
+        self.params["tempc"].description = "Characterizes the temperature."
+        self.params["tempc"].set(min=0, max=1500)
+        self.params["tempc"].unit = u.K
 
-        self.pah_scale = oim.oimParam(**oim._standardParameters["amp"])
-        self.pah_scale.description = "The weight of the PAH (flux) emission"
-        self.pah_scale.set(min=0, max=10)
+        self.params["offset"] = oim.oimParam(**oim._standardParameters["amp"])
+        self.params["offset"].description = "The offset for the weights"
+        self.params["offset"].set(min=16, max=20)
 
-        self.pah = oim.oimParam(**oim._standardParameters["x"])
-        self.pah.description = "The PAHs (flux) emission"
+        self.params["pah_scale"] = oim.oimParam(**oim._standardParameters["amp"])
+        self.params["pah_scale"].description = "The weight of the PAH (flux) emission"
+        self.params["pah_scale"].set(min=0, max=10)
+
+        self.params["pah"] = oim.oimParam(**oim._standardParameters["x"])
+        self.params["pah"].description = "The PAHs (flux) emission"
+        self.params["pah"].unit = u.Jy
 
         self.materials = list(
             ["_".join(key.split("_")[1:]) for key in kwargs.keys() if "kappa" in key]
         )
 
-        for name, param in list(filter(lambda x: "kappa" in x[0], kwargs.items())):
-            setattr(self, name, param)
+        for material in self.materials:
+            for prefix in ["kappa", "weight"]:
+                key = "x" if prefix == "kappa" else "amp"
+                param = oim.oimParam(**oim._standardParameters[key])
+                param.name = f"{prefix}_{material}"
+                param.description = f"The mass fraction for {param.name}"
+                if prefix == "kappa":
+                    param.unit = u.cm**2 / u.g
+                else:
+                    param.set(min=0, max=100)
+                    param.unit = u.pct
 
-            weight = oim.oimParam(**oim._standardParameters["amp"])
-            weight.name = f"weight_{'_'.join(name.split('_')[1:])}"
-            weight.description = (
-                f"The mass fraction for {' '.join(name.split('_')[1:])}"
-            )
-            weight.set(min=0, max=100)
-            weight.unit = u.pct
-            setattr(self, weight.name, weight)
+                self.params[param.name] = param
 
         self._t = np.array([0])  # constant value <=> static model
         self._wl = None
         self._eval(**kwargs)
 
     def _visFunction(self, ucoord, vcoord, rho, wl, t):
-        bb = BlackBody(self.tempc() * self.tempc.unit)(wl * u.m)
-        pah = self.pah_scale() * self.pah(wl) * self.pah.unit
+        bb = BlackBody(self.params["tempc"]() * self.params["tempc"].unit)(wl * u.m)
+        pah = (
+            self.params["pah_scale"]()
+            * self.params["pah"](wl)
+            * self.params["pah"].unit
+        )
 
-        breakpoint()
-        # TODO: Get interpolator to work here
+        # NOTE: Divide by 1e2 to fit percentages
         opacity = np.sum(
             [
-                getattr(self, f"weight_{material}")()
-                * getattr(self, f"kappa_{material}")(wl)
+                self.params[f"weight_{material}"]()
+                / 1e2
+                * self.params[f"kappa_{material}"](wl)
                 for material in self.materials
             ],
             axis=0,
         )
 
-        # NOTE: Divide by 1e2 to fit percentages
-        opacity /= 1e2 * getattr(self, f"kappa_{self.material[0]}").unit
-        flux = bb * opacity * u.sr * 10.0 ** -self.factor()
-        return flux.to(u.Jy) + pah
+        flux = (bb * opacity * u.sr * 10.0 ** -self.params["offset"]()).to(u.Jy)
+        return (flux + pah).value
 
 
 if __name__ == "__main__":
@@ -97,31 +130,19 @@ if __name__ == "__main__":
                 usecols=(0, 2),
                 unpack=True,
             )
-            interp = oim.oimInterp(
+            model_kwargs[f"kappa_{shortname}_{size}"] = oim.oimInterp(
                 "wl", wl=grid * 1e-6, values=value, kind="linear", extrapolate=False
             )
-            param = oim.oimParam(**oim._standardParameters["x"])
-            param.name = f"kappa_{shortname}_{size}"
-            param.value, param.unit = interp, u.cm**2 / u.g
-            model_kwargs[param.name] = param
 
-    param = oim.oimParam(**oim._standardParameters["x"])
-    param.name = "kappa_continuum"
     grid, value = np.load(opacity_dir / "optool" / "preibisch_amorph_c_rv0.1.npy")
-    interp = oim.oimInterp(
+    model_kwargs["kappa_continuum"] = oim.oimInterp(
         "wl", wl=grid * 1e-6, values=value, kind="linear", extrapolate=False
     )
-    param.value, param.unit = interp, u.cm**2 / u.g
-    model_kwargs[param.name] = param
 
-    param = oim.oimParam(**oim._standardParameters["x"])
-    param.name = "pah"
-    wl, value = np.loadtxt(opacity_dir / "boekel" / "PAH.kappa", unpack=True)
-    interp = oim.oimInterp(
+    grid, value = np.loadtxt(opacity_dir / "boekel" / "PAH.kappa", unpack=True)
+    model_kwargs["pah"] = oim.oimInterp(
         "wl", wl=grid * 1e-6, values=value, kind="linear", extrapolate=False
     )
-    param.value, param.unit = interp, u.Jy
-    model_kwargs[param.name] = param
 
     # NOTE: Model creation
     model = oim.oimModel(oimSED(**model_kwargs))
@@ -129,20 +150,39 @@ if __name__ == "__main__":
     # NOTE: Simulate and plot the initial model observables and compute the associated reduced Chi2
     sim = oim.oimSimulator(data=data, model=model)
     sim.compute(computeChi2=True, computeSimulatedData=True)
-    fig0, ax0 = sim.plot(["VIS2DATA", "T3PHI"])
-    print(f"Chi2r = {sim.chi2r}")
+    # fig0, ax0 = sim.plot(["VIS2DATA", "T3PHI"])
+    # print(f"Chi2r = {sim.chi2r}")
 
     # NOTE: Perfoming the model-fitting
-    fit = oim.oimFitterEmcee(data, model, nwalkers=25)
+    nsteps, ndiscard, nwalkers = int(1e3), int(2.5e2), 50
+    fit = oim.oimFitterEmcee(data, model, nwalkers=nwalkers)
+    fit._logProbability = lambda theta: _logProbability(fit, theta)
     fit.prepare(init="random")
-    fit.run(nsteps=1000, progress=True)
+    fit.run(nsteps=nsteps, progress=True)
 
-    # NOTE: Plot the walkers path and make the corner plot
-    figWalkers, axeWalkers = fit.walkersPlot()
-    figCorner, axeCorner = fit.cornerPlot(discard=200)
-    figSim, axSim = fit.simulator.plot(["FLUXDATA"])
-    plt.show()
+    # # NOTE: Plot the walkers path and make the corner plot
+    # figWalkers, axeWalkers = fit.walkersPlot()
+    figCorner, axeCorner = fit.cornerPlot(discard=ndiscard)
+    # figSim, axSim = fit.simulator.plot(["OI_FLUX"])
+    # plt.show()
 
     # NOTE: Get the best-fit reduced chi2 and best-fit values of the free parameters (+ their errors)
-    best, err_l, err_u, err = fit.getResults(mode="best", discard=10)
+    keys = list(model.getParameters(free=True).keys())
+    best, err_l, err_u, err = fit.getResults(mode="best", discard=ndiscard)
+    best = reparametrise_sum_to_one(keys, best)
+
+    for iparam, parami in enumerate(model.getParameters(free=True).values()):
+        parami.value = best[iparam]
+
     print(f"Chi2r = {fit.simulator.chi2r}")
+
+    wavelengths = data.data[0][3].data["EFF_WAVE"]
+    flux = data.data[0][5].data["FLUXDATA"][0]
+    fluxerr = data.data[0][5].data["FLUXERR"][0]
+    model_flux = model.getComplexCoherentFlux(0, 0, wavelengths, 0)
+
+    fig, ax = plt.subplots()
+    ax.plot(wavelengths, flux, label="Data")
+    ax.fill_between(wavelengths, flux - fluxerr, flux + fluxerr, alpha=0.5)
+    ax.plot(wavelengths, model_flux, label="Model", color="red")
+    plt.show()
