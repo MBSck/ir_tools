@@ -2,9 +2,10 @@ import re
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import pandas as pd
+from tqdm import tqdm
 
 
 def get_target(sheet: Path, target: str) -> pd.DataFrame:
@@ -105,5 +106,5 @@ if __name__ == "__main__":
     source_dir = data_dir / "reduced_data" / "jozsef_reductions" / "targets5"
     target_dir = data_dir / "survey"
 
-    for target in get_target_list(excel_file):
+    for target in tqdm(get_target_list(excel_file), "Sorting data..."):
         sort_target(excel_file, target, source_dir, target_dir)
