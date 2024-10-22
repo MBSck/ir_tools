@@ -25,7 +25,7 @@ def sampled_interpolation(wavelengths, wavelength_grid, values):
 
 
 def downsample(fits_to_downsample: Path, fits_to_sample_from: np.ndarray):
-    downsampled_fits = fits_to_downsample.parent / f"{fits_to_downsample.stem}_downsampled.fits"
+    downsampled_fits = fits_to_downsample.parent / f"{fits_to_downsample.stem}_DOWNSAMP.fits"
     shutil.copy(fits_to_sample_from, downsampled_fits)
     keys = ["oi_flux", "oi_vis2", "oi_vis", "oi_t3"]
     sub_keys = [["fluxdata", "fluxerr"], ["vis2data", "vis2err"],
@@ -66,12 +66,11 @@ def downsample(fits_to_downsample: Path, fits_to_sample_from: np.ndarray):
         # plt.show()
         plt.savefig("downsampled.pdf", format="pdf")
         hdul_new.flush()
-        breakpoint()
 
 
 if __name__ == "__main__":
-    data_dir = Path("/Users/scheuck/Data/fitting_data/hd142527")
-    low_res_fits = data_dir / "hd_142527_2023-07-01T00_57_49:2023-07-01T00_33_15_AQUARIUS_FINAL_TARGET_INT_flux_avg_vis.fits"
-    high_res_fits = data_dir / "hd_142527_2021-03-27T05_29_42:2021-03-27T04_58_38_AQUARIUS_FINAL_TARGET_INT_flux_avg_vis.fits"
+    data_dir = Path().home() / "Data" / "fitting_data" / "hd142527"
+    low_res_fits = data_dir / "HD_142527_2022-03-23T08_20_55_U1U2U3U4_N_TARGET_FINALCAL_INT_K2N.fits"
+    high_res_fits = data_dir / "HD_142527_2021-03-27T05_29_42_U1U2U3U4_N_TARGET_FINALCAL_INT.fits"
     downsample(high_res_fits, low_res_fits)
 
