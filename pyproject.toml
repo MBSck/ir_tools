@@ -2,7 +2,7 @@
 name = "ir-tools"
 version = "0.1.0"
 description = "A collection of tools used to work with interferometric data."
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "README.md"
 license = {file = "LICENSE"}
 
@@ -26,9 +26,14 @@ classifiers = [
 dependencies = [
     "astropy>=6.0.1",
     "astroquery>=0.4.7",
+    "matadrs",
     "matplotlib>=3.9.2",
     "numpy>=1.26.4",
+    "oimodeler",
+    "openpyxl>=3.1.5",
     "pandas>=2.2.3",
+    "ppdmod",
+    "pylatex>=1.4.2",
     "scipy>=1.13.1",
     "skycalc-cli>=1.4",
     "tqdm>=4.66.5",
@@ -51,6 +56,11 @@ dev-dependencies = [
     "sphinx-autobuild>=2024.10.3",
     "sphinx-autodoc-typehints>=2.3.0",
 ]
+
+[tool.uv.sources]
+oimodeler = { path = "../oimodeler", editable = true }
+ppdmod = { path = "../ppdmod", editable = true }
+matadrs = { path = "../matadrs", editable = true }
 
 [project.urls]
 repository = "https://github.com/MBSck/ir-tools"
