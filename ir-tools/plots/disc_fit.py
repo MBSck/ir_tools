@@ -57,7 +57,7 @@ if __name__ == "__main__":
     dim = 1024
     wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
                                  wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
-    data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
+    data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
     component_labels, components, sampler = restore_from_fits(path)
     theta, uncertainties = get_best_fit(sampler)
     rchi_sq = compute_observable_chi_sq(

@@ -88,7 +88,7 @@ def calc_vis_from_corrflux(input_corrflux_file,input_totalflux_file,outfile_path
         fluxerr = fluxerr_resamp
         outhdul['OI_FLUX'].data['FLUXDATA'] = flux
         outhdul['OI_FLUX'].data['FLUXERR'] = fluxerr
-        
+
     for k in range(len(outhdul['OI_VIS'].data['VISAMP'])):
         # NOTE: Collect and average matching vis2 data
         vis = (corrflux[k]/flux)
@@ -128,8 +128,7 @@ def calculate_vis(directory: Optional[Path] = None,
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/reduced_data/hd142527/matisse/lband")
-    # matisse_path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/old/1.7.6/mat_tools")
-    combine_chopped_non_chopped(path, error=True, save=True)
-    average_total_flux(path / "combined", error=True, save=True)
+    path = Path().home() / "Data/reduced_data/jozsef_reductions/modified_lband_hd142527"
+    # combine_chopped_non_chopped(path, error=True, save=True)
+    # average_total_flux(path / "combined", error=True, save=True)
     # calculate_vis(path / "combined" / "flux", propagate_fluxerr=False, error=True, save=True)
