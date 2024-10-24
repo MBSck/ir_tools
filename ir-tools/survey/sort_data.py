@@ -60,7 +60,10 @@ def get_date(night: str, nights: pd.DataFrame) -> str | None:
 def sort_target(sheet: Path, target: str, source_dir: Path, target_dir: Path) -> None:
     """Sorts the data for a target."""
     dir_name = get_dir_name(target)
-    target_dir /= dir_name 
+    target_dir /= dir_name
+    if target_dir.exists():
+        shutil.rmtree(target_dir)
+
     for quality in ["bad", "medium", "good", "tba"]:
         quality_dir = target_dir / quality
         quality_dir.mkdir(parents=True, exist_ok=True)
@@ -76,15 +79,14 @@ def sort_target(sheet: Path, target: str, source_dir: Path, target_dir: Path) ->
             continue
 
         key = get_date(date.group(), nights)
-
         if key is None:
             shutil.copy(fits_file, target_dir / "tba" / fits_name)
         else:
             row = df.loc[reversed_nights[key]]
             config = row["Data description"]["Tel. config."]
-            band = "L" if filter(lambda x: "L" in x, fits_name.split("_")) else "N"
+            band = "L" if any(letter == "L" for letter in fits_name.split("_")) else "N"
 
-            if band == "N" and "AT" in config:
+            if band == "N" and "at" in config.lower():
                 shutil.copy(fits_file, target_dir / "tba" / fits_name)
             else:
                 quality = str(row["Data quality"][f"{band} band"])
