@@ -11,6 +11,7 @@ def prepare_data(
     remove_array: list[str] | None = None,
     wavelength_range: list[float] | None = None,
     exclude_data: list[str] | None = None,
+    keep_data: list[str] | None = None,
 ) -> oim.oimData:
     """Prepare the data for the model fitting.
 
@@ -24,6 +25,8 @@ def prepare_data(
         The wavelength range to consider, by default None.
     exclude_data : list of str, optional
         The data to exclude from the fitting, by default None.
+    keep_data : list of str, optional
+        The data to keep in the fitting, by default None.
 
     Returns
     -------
@@ -47,7 +50,7 @@ def prepare_data(
                     if exclusion_condition.lower() not in fits_file.name.lower()
                 ]
 
-    data = oim.oimData()
+    data = oim.oimData(fits_files)
 
     filters = []
     if remove_array is not None:
@@ -89,19 +92,17 @@ def run_fit(
     """
     sim = oim.oimSimulator(data=data, model=model)
     sim.compute(computeChi2=True, computeSimulatedData=True)
-    fig0, ax0 = sim.plot(data_to_plot)
     print(f"Chi2r = {sim.chi2r}")
 
     fit = oim.oimFitterEmcee(data, model, nwalkers=int(nwalkers))
     fit.prepare(init="random")
     fit.run(nsteps=int(nsteps), progress=True)
 
-    figWalkers, axeWalkers = fit.walkersPlot()
     figCorner, axeCorner = fit.cornerPlot(discard=int(ndiscard))
     fig0, ax0 = sim.plot(data_to_plot)
 
-    keys = list(model.getParameters(free=True).keys())
-    best, err_l, err_u, err = fit.getResults(mode="best", discard=int(ndiscard))
+    # keys = list(model.getParameters(free=True).keys())
+    # best, err_l, err_u, err = fit.getResults(mode="best", discard=int(ndiscard))
     plt.show()
 
 
@@ -109,15 +110,17 @@ if __name__ == "__main__":
     survey_dir = Path().home() / "Data" / "survey"
 
     # NOTE: Model creation
-    g = oim.oimEGauss(fwhm=20)
-    g.params["elong"].set(min=1, max=100)
-    g.params["fwhm"].set(min=0, max=100)
-    model = oim.oimModel(g)
+    pt = oim.oimPt()
+    ud = oim.oimUD()
+    ud.params["d"].set(min=0, max=20)
+
+    model = oim.oimModel([pt, ud])
 
     # NOTE: Model fit
     for target in get_target_list(survey_dir / "MATISSE data overview.xlsx"):
         data = prepare_data(
             survey_dir / get_dir_name(target),
+            wavelength_range=[3.e-6, 3.9e-6],
             remove_array=["OI_FLUX", "OI_T3"],
             exclude_data=["nband", "chopped", "k2n"],
         )
