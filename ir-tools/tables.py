@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from matadrs.utils.readout import ReadoutFits
 from ppdmod.plot import format_labels
-from pylatex import Document, Section, Tabular
+from pylatex import Document, Tabular, MultiColumn, Section
 from pylatex.utils import NoEscape
 
 LATTICE_STRUCTURE = {
@@ -15,30 +15,42 @@ LATTICE_STRUCTURE = {
     "forsterite": "crystalline",
     "enstatite": "crystalline",
     "silica": "crystalline",
-    "carbon": "amorphous"
-    }
+    "carbon": "amorphous",
+}
 
 CHEMICAL_FORMULAS = {
     "pyroxene": r"\ce{Mg_{x}Fe_{1-x}SiO3}",
     "forsterite": r"\ce{Mg2SiO4}",
     "enstatite": r"\ce{MgSiO3}",
     "silica": r"\ce{SiO2}",
-    "carbon": r"\ce{C}"
-    }
+    "carbon": r"\ce{C}",
+}
 
 
 # TODO: Finish this (there are still multiple files of the same name)
 def observations(fits_files: List[Path], savefig: Optional[Path] = None):
     """Read a FITS file and return the data as an astropy table."""
-    data = {"instrument": [], "date": [], "seeing": [], "tau0": [],
-            "stations": [], "array": [], "name": [], "ldd": [],
-            "time": [], "resolution": [], "comment": []}
+    data = {
+        "instrument": [],
+        "date": [],
+        "seeing": [],
+        "tau0": [],
+        "stations": [],
+        "array": [],
+        "name": [],
+        "ldd": [],
+        "time": [],
+        "resolution": [],
+        "comment": [],
+    }
 
     already_added = set()
     for fits_file in fits_files:
         readout = ReadoutFits(fits_file)
-        time = datetime.strptime(readout.date.split("T")[1],
-                                 '%H:%M:%S.%f' if "." in readout.date else '%H:%M:%S')
+        time = datetime.strptime(
+            readout.date.split("T")[1],
+            "%H:%M:%S.%f" if "." in readout.date else "%H:%M:%S",
+        )
         if time.microsecond >= 500000:
             time = time + timedelta(seconds=1)
         time = time.replace(microsecond=0)
@@ -71,39 +83,57 @@ def observations(fits_files: List[Path], savefig: Optional[Path] = None):
             else:
                 comment = "L"
 
-            resolution = "/".join([readout.primary_header[f"hierarch eso ins di{band} name"] for band in comment])
+            resolution = "/".join(
+                [
+                    readout.primary_header[f"hierarch eso ins di{band} name"]
+                    for band in comment
+                ]
+            )
 
         data["comment"].append(comment)
         data["resolution"].append(resolution)
 
     df = pd.DataFrame(data).sort_values(by="date")
-    df.to_csv(savefig if savefig is not None else "observations.csv",
-              index=False, header=False)
+    df.to_csv(
+        savefig if savefig is not None else "observations.csv",
+        index=False,
+        header=False,
+    )
 
 
 def dust_species(
-        weights: np.ndarray, names: List[str],
-        methods: List[str], sizes: List[float],
-        fmaxs: Optional[List[float]] = None) -> None:
+    weights: np.ndarray,
+    names: List[str],
+    methods: List[str],
+    sizes: List[float],
+    fmaxs: Optional[List[float]] = None,
+) -> None:
     """Read dust species to table."""
-    data = {"type": [], "structure": [], "formula": [],
-            "method": [], "fmax": [], "grain_size": [], "weight": weights}
+    data = {
+        "type": [],
+        "structure": [],
+        "formula": [],
+        "method": [],
+        "fmax": [],
+        "grain_size": [],
+        "weight": weights,
+    }
 
     letters = string.ascii_lowercase
     for index, size in enumerate(sizes):
-        name = [names[index].title()+r"$\tablefootmark{"+letters[index]+r"}$"]
+        name = [names[index].title() + r"$\tablefootmark{" + letters[index] + r"}$"]
         structure = [LATTICE_STRUCTURE[names[index]].title()]
         formula = [CHEMICAL_FORMULAS[names[index]]]
         method = [methods[index]]
         fmax = [fmaxs[index]] if fmaxs is not None else None
 
         if len(size) > 1:
-            name += [""]*(len(size) - 1)
-            structure += [""]*(len(size) - 1)
-            formula += [""]*(len(size) - 1)
-            method += [""]*(len(size) - 1)
+            name += [""] * (len(size) - 1)
+            structure += [""] * (len(size) - 1)
+            formula += [""] * (len(size) - 1)
+            method += [""] * (len(size) - 1)
             if fmax is not None:
-                fmax += [""]*(len(size) - 1)
+                fmax += [""] * (len(size) - 1)
 
         data["type"].extend(name)
         data["structure"].extend(structure)
@@ -116,19 +146,26 @@ def dust_species(
     df.to_csv("dust_species.csv", index=False, header=False)
 
 
-def best_fit_parameters(labels: np.ndarray, units: np.ndarray,
-                        values: np.ndarray,
-                        uncertainties: Optional[np.ndarray] = None,
-                        savefig: Optional[Path] = None,
-                        save_as_csv: Optional[bool] = True) -> None:
+def best_fit_parameters(
+    labels: np.ndarray,
+    units: np.ndarray,
+    values: np.ndarray,
+    uncertainties: Optional[np.ndarray] = None,
+    savefig: Optional[Path] = None,
+    save_as_csv: Optional[bool] = True,
+) -> None:
     """Make a (.pdf) file containing a table of the fit parameters."""
     labels, units = format_labels(labels, units, split=True)
     uncertainties = np.round(np.abs(uncertainties - values[:, np.newaxis]), 2)
-    values = [f"{value:.2e}" if np.abs(value) < 1e-2 else f"{value:.2f}" for value in values]
+    values = [
+        f"{value:.2e}" if np.abs(value) < 1e-2 else f"{value:.2f}" for value in values
+    ]
 
     if uncertainties is not None:
-        values = [f"${{{value}}}_{{-{uncertainty[0]}}}^{{+{uncertainty[1]}}}$"
-                  for value, uncertainty in zip(values, uncertainties)]
+        values = [
+            f"${{{value}}}_{{-{uncertainty[0]}}}^{{+{uncertainty[1]}}}$"
+            for value, uncertainty in zip(values, uncertainties)
+        ]
 
     if save_as_csv:
         data = {"Parameter": labels, "Unit": units, "Value": values}
@@ -150,7 +187,38 @@ def best_fit_parameters(labels: np.ndarray, units: np.ndarray,
         doc.generate_pdf(savefig, clean_tex=False)
 
 
-if __name__ == "__main__":
-    fits_files = list(Path("/Users/scheuck/Data/fitting_data/hd142527").glob("*.fits"))
-    observations(fits_files)
+def opacities():
+    path = Path().home() / "Data" / "model_results" / "sed_fits" / "2024-10-24"
+    labels, weights = np.load(
+        path / "averaged" / "assets" / "silicate_labels_and_weights.npy"
+    )
+    weights = np.round(weights.astype(float) / weights.astype(float).sum() * 1e2, 2)
 
+    labels = ["Pyroxene", "Enstatite", "Forsterite", "Silica", "Olivine"]
+    boekel_weights = np.array([0, 73.2, 0.6, 14.2, 8.6, 0, 2.4, 1.0, 0, 0])
+    juhasz_weights = np.array([0, 22.98, 3.23, 6.27, 5.7, 0, 6.56, 4.55, 37.14, 13.57])
+
+    labels = [""] + [MultiColumn(2, align="c |", data=label) for label in labels]
+    table = " ".join(
+        ["c" if index % 2 == 0 else "c |" for index in range(1, weights.size + 2)]
+    )
+
+    doc = Document()
+    with doc.create(Section("Opacity weights")):
+        with doc.create(Tabular(table)) as table:
+            table.add_row(labels)
+            table.add_hline()
+            table.add_row([""] + ["Small", "Large"] * (len(labels) - 1))
+            table.add_hline()
+            table.add_row(["Mine"] + weights.tolist())
+            table.add_row(["Juhasz et al. (2009)"] + juhasz_weights.tolist())
+            table.add_row(["Boekel et al. (2005)"] + boekel_weights.tolist())
+            table.add_hline()
+
+    doc.generate_pdf("hd142527_opacity_fits", clean_tex=False)
+
+
+if __name__ == "__main__":
+    # fits_files = list(Path("/Users/scheuck/Data/fitting_data/hd142527").glob("*.fits"))
+    # observations(fits_files)
+    opacities()
