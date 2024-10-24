@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from matadrs.utils.readout import ReadoutFits
 from ppdmod.plot import format_labels
-from pylatex import Document, Tabular, MultiColumn, Section
+from pylatex import Document, MultiColumn, Section, Tabular
 from pylatex.utils import NoEscape
 
 LATTICE_STRUCTURE = {
