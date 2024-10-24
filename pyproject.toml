@@ -38,6 +38,7 @@ dependencies = [
     "scipy>=1.13.1",
     "skycalc-cli>=1.4",
     "tqdm>=4.66.5",
+    "uncertainties>=3.2.2",
 ]
 
 [build-system]
