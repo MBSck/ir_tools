@@ -12,8 +12,10 @@ if __name__ == "__main__":
     path = data_dir / "model_results" / "sed_fits" / "2024-10-24"
     dir_name = "averaged"
 
-    labels, weights = np.load(path / dir_name / "assets" / "silicate_labels_and_weights.npy")
-    weights = weights.astype(float) / weights.astype(float).sum() * 1e2
+    labels, weights = np.load(
+        path / dir_name / "assets" / "silicate_labels_and_weights.npy"
+    )
+    weights = weights.astype(float) / weights.astype(float).sum()
 
     names = []
     for label in [NAMES_DICT[label.split("_")[1]] for label in labels]:
@@ -21,4 +23,7 @@ if __name__ == "__main__":
             names.append(label)
 
     wl, opacity = get_opacity(data_dir / "opacities", weights, names, "grf")
-    np.save("hd142527_silicate_opacities.npy", np.array([wl, opacity]))
+    np.save(
+        data_dir / "opacities" / "hd142527_silicate_opacities.npy",
+        np.array([wl, opacity]),
+    )
