@@ -22,8 +22,8 @@ def survey_results(
             table.add_hline()
 
             for source, chi_sq, result in zip(sources, chi_sqs, results):
-                result = NoEscape(f"${result[0][0]:.2f}^{{+{result[0][1]:.2f}}}_{{-{result[0][2]:.2f}}}$")
-                table.add_row([source] + [f"{chi_sq:.2f}"] + [result])
+                result = [NoEscape(f"${r[0]:.2f}^{{+{r[1]:.2f}}}_{{-{r[2]:.2f}}}$") for r in result]
+                table.add_row([source] + [f"{chi_sq:.2f}"] + result)
 
             table.add_hline()
 
@@ -32,7 +32,7 @@ def survey_results(
 
 if __name__ == "__main__":
     survey_result_dir = Path().home() / "Data" / "survey" / "results"
-    save_dir = survey_result_dir / "model_gd"
+    save_dir = survey_result_dir / "model_pt_eg"
     sources = np.load(save_dir / "sources.npy")
     parameter_labels = np.load(save_dir / "labels.npy")
     results = np.load(save_dir / "results.npy")
