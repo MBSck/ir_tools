@@ -1,4 +1,3 @@
-from pprint import pprint
 from typing import List
 
 import astropy.units as u
@@ -28,7 +27,7 @@ def query_and_filter_catalogs(object_name: str, radius=1*u.arcsec):
         # has_multiple_epochs(catalog):
         if has_wise_columns:
             multi_epoch_catalogs.append(catalog)
-    
+
     return multi_epoch_catalogs
 
 
@@ -100,5 +99,5 @@ if __name__ == "__main__":
     # pprint({k:v.description for k,v in catalog_list.items()})
     
     # catalogs = Irsa.list_catalogs()
-    plot_multi_epoch("hd142666", True)
-    plot_multi_epoch("hd142527", True, flux_ranges=[[4, None], [8, None]])
+    plot_multi_epoch("hd142527", False)
+    # plot_multi_epoch("hd142527", True, flux_ranges=[[4, None], [8, None]])
