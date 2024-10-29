@@ -27,7 +27,6 @@ CHEMICAL_FORMULAS = {
 }
 
 
-# TODO: Finish this (there are still multiple files of the same name)
 def observations(fits_files: List[Path], savefig: Optional[Path] = None):
     """Read a FITS file and return the data as an astropy table."""
     data = {
@@ -51,11 +50,8 @@ def observations(fits_files: List[Path], savefig: Optional[Path] = None):
             readout.date.split("T")[1],
             "%H:%M:%S.%f" if "." in readout.date else "%H:%M:%S",
         )
-        if time.microsecond >= 500000:
-            time = time + timedelta(seconds=1)
-        time = time.replace(microsecond=0)
 
-        date = "T".join([readout.date.split("T")[0], str(time.time())])
+        date = "T".join([readout.date.split("T")[0], time.strftime("%H:%M")])
         if date in already_added:
             continue
 
@@ -217,7 +213,8 @@ def opacities(weight_file: Path) -> None:
 
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    # fits_files = list(Path("/Users/scheuck/Data/fitting_data/hd142527").glob("*.fits"))
-    # observations(fits_files)
+    fits_files = list((data_dir / "fitting_data" / "hd142527").glob("*.fits"))
+    observations(fits_files)
+
     sed_fit_dir = data_dir / "opacities" / "silicate_labels_and_weights.npy"
     opacities(sed_fit_dir)

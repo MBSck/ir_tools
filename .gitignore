@@ -15,6 +15,7 @@
 *.xlsx
 *.csv
 *.npy
+*.tex
 old/
 __pycache__/
 *egg-info*
