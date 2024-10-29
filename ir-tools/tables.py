@@ -187,8 +187,8 @@ def best_fit_parameters(
         doc.generate_pdf(savefig, clean_tex=False)
 
 
-def opacities(fit_dir: Path) -> None:
-    labels, weights = np.load(fit_dir / "assets" / "silicate_labels_and_weights.npy")
+def opacities(weight_file: Path) -> None:
+    _, weights = np.load(weight_file)
     weights = np.round(weights.astype(float) / weights.astype(float).sum() * 1e2, 2)
 
     labels = ["Pyroxene", "Enstatite", "Forsterite", "Silica", "Olivine"]
@@ -212,12 +212,12 @@ def opacities(fit_dir: Path) -> None:
             table.add_row(["Boekel et al. (2005)"] + boekel_weights.tolist())
             table.add_hline()
 
-    doc.generate_pdf(f"hd142527_opacity_fits_{fit_dir.name}", clean_tex=False)
+    doc.generate_pdf("hd142527_opacity", clean_tex=False)
 
 
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
     # fits_files = list(Path("/Users/scheuck/Data/fitting_data/hd142527").glob("*.fits"))
     # observations(fits_files)
-    sed_fit_dir = data_dir / "model_results" / "sed_fits" / "2024-10-26" / "only_high"
+    sed_fit_dir = data_dir / "opacities" / "silicate_labels_and_weights.npy"
     opacities(sed_fit_dir)

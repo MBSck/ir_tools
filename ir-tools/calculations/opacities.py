@@ -5,7 +5,6 @@ from ppdmod.utils import get_opacity
 
 SHORTNAMES = ["pyrox", "enst", "forst", "sil", "oliv"]
 NAMES = ["Pyroxene", "Enstatite", "Forsterite", "Silica", "Olivine"]
-NAMES_DICT = dict(zip(SHORTNAMES, NAMES))
 
 
 def generate_opacity_file(
