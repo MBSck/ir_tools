@@ -17,7 +17,7 @@ def ptform():
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-24/")
+    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-28/")
     dir_name = "averaged"
 
     path /= dir_name
@@ -52,17 +52,16 @@ if __name__ == "__main__":
     silicate_weights = np.array(theta)[indices[1:]]
     np.save(
         assets_dir / "silicate_labels_and_weights.npy",
-        [
-            np.array(labels)[indices[1:]],
-            silicate_weights
-        ],
+        [np.array(labels)[indices[1:]], silicate_weights],
     )
 
     with open(path / "components.pkl", "rb") as f:
         components = pickle.load(f)
 
     rchi_sq = compute_sed_chi_sq(
-        components[0].compute_flux(OPTIONS.fit.wavelengths), theta.size, reduced=True
+        components[0].compute_flux(OPTIONS.fit.wavelengths),
+        reduced=True,
+        nfree=theta.size,
     )
     print(f"rchi_sq: {rchi_sq:.2f}")
 
@@ -78,5 +77,5 @@ if __name__ == "__main__":
         savefig=assets_dir / "sed.csv",
     )
 
-    plot_sed([7.5, 15] * u.um, components, scaling="nu", save_dir=plot_dir)
-    plot_sed([7.5, 15] * u.um, components, scaling=None, save_dir=plot_dir)
+    plot_sed([7.9, 13.1] * u.um, components, scaling="nu", save_dir=plot_dir)
+    plot_sed([7.9, 13.1] * u.um, components, scaling=None, save_dir=plot_dir)
