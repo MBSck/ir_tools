@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from astropy.modeling.models import BlackBody
 from joblib import Parallel, delayed
-from ppdmod.utils import load_data
+from ppdmod.utils import load_data, qval_to_opacity
 
 
 def integrate_slice(integrand, nu):
@@ -94,13 +94,18 @@ def compute_temperature_grid(
 if __name__ == "__main__":
     data_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data")
     # data_dir = Path().home() / "Data"
+
+    method = "grf"
     opacity_dir = data_dir / "opacities"
-    wl_op, silicate_op = np.load(opacity_dir / "hd142527_silicate_opacities.npy")
+    wl_op, silicate_op = np.load(
+        opacity_dir / f"hd142527_silicate_{method}_opacities.npy"
+    )
     wl_flux, flux = load_data(
         data_dir / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2)
     )
-    wl_cont, cont_op = np.load(
-        data_dir / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
+    wl_cont, cont_op = load_data(
+        data_dir / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat",
+        load_func=qval_to_opacity,
     )
 
     fig, (ax, bx) = plt.subplots(1, 2, figsize=(12, 6), sharey=True, sharex=True)
