@@ -55,6 +55,8 @@ def generate_opacity_file(
     wl, opacity = get_opacity(data_dir / "opacities", weights, NAMES, method)
 
     if fits_file is not None:
+        _, opacity_normed = get_opacity(data_dir / "opacities", weights / weights.sum(), NAMES, method)
+        opacity_scaling_factor = (opacity_normed / opacity)[0]
         grid_continuum, opacity_continuum = continuum_data
         labels, params = np.load(best_fit_file)
         params = params.astype(float)
@@ -84,6 +86,7 @@ def generate_opacity_file(
         lower, upper = (ind[0] - 1, ind[0] + 4), (ind[-1] - 3, ind[-1] + 2)
         opacity[slice(*lower)] = interpolation_smooth(wl, opacity, lower)
         opacity[slice(*upper)] = interpolation_smooth(wl, opacity, upper)
+        opacity *= opacity_scaling_factor
 
     if do_plot:
         empirical = "_empirical" if fits_file is not None else ""
@@ -92,9 +95,9 @@ def generate_opacity_file(
         plt.xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
         plt.ylabel(r"$\kappa$ (cm$^2$ g$^{-1}$)")
         plt.xlim([7, 15])
-        plt.ylim([None, 3000])
+        plt.ylim([None, 3500])
         if empirical:
-            plt.ylim([None, 1000])
+            plt.ylim([None, 3000])
 
         plt.savefig(f"silicate_opacities_{method}{empirical}.pdf", format="pdf")
         plt.close()
@@ -123,7 +126,7 @@ if __name__ == "__main__":
         load_func=qval_to_opacity,
     )
 
-    # generate_opacity_file(data_dir, weights, method=method, do_plot=True)
+    # generate_opacity_file(data_dir, weights / weights.sum(), method=method, do_plot=True)
     generate_opacity_file(
         data_dir,
         weights,
