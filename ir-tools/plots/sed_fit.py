@@ -49,11 +49,11 @@ if __name__ == "__main__":
     )
     print(f"Normed sum: {np.array(theta)[indices].sum()}")
 
-    silicate_weights = np.array(theta)[indices[1:]]
-    np.save(
-        assets_dir / "silicate_labels_and_weights.npy",
-        [np.array(labels)[indices[1:]], silicate_weights],
+    best_fit_params = np.save(
+        assets_dir / "best_fit.npy", [np.array(labels), np.array(theta)]
     )
+    silicate_weights = np.array(theta)[indices[1:]]
+    np.save(assets_dir / "silicate_labels_and_weights.npy", silicate_weights)
 
     with open(path / "components.pkl", "rb") as f:
         components = pickle.load(f)
