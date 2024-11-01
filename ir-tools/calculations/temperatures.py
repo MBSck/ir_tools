@@ -23,7 +23,6 @@ def thermal_equilibrium(
     temperature: float, p_in: np.ndarray, wavelengths: u.um, opacity: u.cm**2 / u.g
 ) -> float:
     """Computes the difference between the incoming and outgoing radiation of a dust grain."""
-    breakpoint()
     return p_in - p_out(temperature, opacity, wavelengths)
 
 
@@ -44,7 +43,6 @@ def calculate_radial_elements(
         )
 
         test = root_scalar(thermal_eq, bracket=temperature_range, method="brentq")
-        breakpoint()
     return np.array(radial_grid)
 
 
@@ -89,14 +87,17 @@ def compute_temperature_grid(
     temperature_grid : numpy.ndarray
         A matrix of temperatures for the different continuum weights.
     """
-    silicate_opacity = silicate_opacity[::-1]
-    continuum_opacity = continuum_opacity[::-1]
-    flux_star = flux_star.to(u.erg / u.s / u.cm**2 / u.Hz)[::-1]
-    wavelengths = (wavelengths * u.um)[::-1]
+    silicate_opacity = silicate_opacity
+    continuum_opacity = continuum_opacity
+    flux_star = flux_star.to(u.erg / u.s / u.cm**2 / u.Hz)
+    wavelengths = (wavelengths * u.um)
 
     nu = (const.c / wavelengths.to(u.m)).to(u.Hz)
     radii = np.logspace(
         np.log10(radial_range[0]), np.log10(radial_range[-1]), radial_dim
+    )
+    radiation_field = (
+        flux_star * (distance.to(u.au) / (radii[:, np.newaxis] * u.au)) ** 2
     )
 
     weight_grid = []
@@ -104,9 +105,6 @@ def compute_temperature_grid(
         opacity = (1 - weight) * silicate_opacity + weight * continuum_opacity
         opacity = opacity[np.newaxis, :]
 
-        radiation_field = (
-            flux_star * (distance.to(u.au) / (radii[:, np.newaxis] * u.au)) ** 2
-        )
         p_in = np.trapezoid(opacity * radiation_field, nu).value
 
         # TODO: Change this into multiprocessing here
@@ -154,16 +152,13 @@ if __name__ == "__main__":
     bx.set_xlim([-5, 100])
     plt.savefig("opacities.pdf", format="pdf")
 
-    test = BlackBody(1 * u.K)(1 * u.Hz)
-    breakpoint()
-
     weights, radii, temperatures = compute_temperature_grid(
         wl_flux,
         158.51 * u.pc,
         flux * u.Jy,
         silicate_op,
         cont_op,
-        radial_dim=1024,
+        radial_dim=2048,
         ncores=50,
     )
 
