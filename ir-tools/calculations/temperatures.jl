@@ -69,8 +69,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
   indices = max(wl_op[begin], wl_cont[begin]) .< wl_flux .< min(wl_op[end], wl_cont[end])
   wl_flux, flux = wl_flux[indices], flux[indices]
 
-  silicate_op = linear_interpolation(wl_op, silicate_op, extrapolation_bc=Line())(wl_flux)
-  cont_op = linear_interpolation(wl_cont, cont_op, extrapolation_bc=Line())(wl_flux)
+  silicate_op = linear_interpolation(wl_op, silicate_op)(wl_flux)
+  cont_op = linear_interpolation(wl_cont, cont_op)(wl_flux)
 
   compute_temperature_grid(wl_flux * 1e-6, 158.51, flux, silicate_op, cont_op)
 end
