@@ -50,8 +50,7 @@ function compute_temperature_grid(
     end
     next!(progress)
   end
-  npzwrite("weight_temperatures.npy", weight_grid)
-  npzwrite("radii.npy", radii)
+  npzwrite("opacity_temperatures.npz", Dict("weights" => weights, "radii" => radii, "matrix" => weight_grid)
   finish!(progress)
 end
 
