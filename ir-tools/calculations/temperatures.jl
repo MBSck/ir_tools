@@ -3,6 +3,7 @@ import PhysicalConstants.CODATA2018: c_0, h, k_B
 using Interpolations
 using NPZ
 using ProgressMeter
+using PyCall
 using Roots
 using Trapz
 using Unitful
@@ -50,7 +51,12 @@ function compute_temperature_grid(
     end
     next!(progress)
   end
-  npzwrite("opacity_temperatures.npz", Dict("weights" => weights, "radii" => radii, "matrix" => weight_grid)
+  result = Dict("weights" => weights, "radii" => radii, "matrix" => weight_grid)
+
+  open("opacity_temps.pkl", "wb") do f
+    pyimport("pickle").dump(result, f)
+  end
+
   finish!(progress)
 end
 
