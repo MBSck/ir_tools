@@ -34,8 +34,8 @@ if __name__ == "__main__":
         data_dir
         / "model_results"
         / "disc_fits"
-        / "2024-11-07"
-        / "results_model_16:56:36"
+        / "2024-11-08"
+        / "results_model_14:47:41"
     )
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -98,7 +98,8 @@ if __name__ == "__main__":
     )
     data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
     sampler = DynamicNestedSampler.restore(path / "sampler.save")
-    theta, uncertainties = get_best_fit(sampler, method="quantile")
+    results = np.load(path / "results.npz")
+    theta, uncertainties = results["theta"], results["uncertainties"]
 
     with open(path / "components.pkl", "rb") as f:
         components = pickle.load(f)
@@ -115,7 +116,7 @@ if __name__ == "__main__":
         reduced=True,
         rtotal_chi_sq=True,
     )
-    print(f"total reduced chi_sq: {rchi_sq:.2f}")
+    print(f"Total reduced chi_sq: {rchi_sq:.2f}")
 
     rchi_sqs = compute_observable_chi_sq(
         *compute_observables(components), ndim=ndim, reduced=True
@@ -126,7 +127,7 @@ if __name__ == "__main__":
     labels = np.load(path / "labels.npy")
     units = np.load(path / "units.npy", allow_pickle=True)
     plot_corner(sampler, labels, units, savefig=plot_dir / "corner.pdf")
-    plot_chains(sampler, labels, units, savefig=plot_dir / "chains.pdf")
+    # plot_chains(sampler, labels, units, savefig=plot_dir / "chains.pdf")
 
     plot_overview(savefig=plot_dir / "overview.pdf")
     best_fit_parameters(
