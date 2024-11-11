@@ -109,7 +109,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     ax.plot(wl, opacity, label="From fit")
 
-    wl, opacity = calculate_opacity(
+    wl, opacity_data = calculate_opacity(
         data_dir,
         weights,
         method=method,
@@ -119,10 +119,10 @@ if __name__ == "__main__":
         scaling=1
     )
 
-    ax.plot(wl, opacity, label="From data.")
+    ax.plot(wl, opacity_data, label="From data.")
 
     scaling = 1.2
-    wl, opacity = calculate_opacity(
+    wl, opacity_data_scaled = calculate_opacity(
         data_dir,
         weights,
         method=method,
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         scaling=1.3
     )
 
-    ax.plot(wl, opacity, label=f"From data. Scaled by {scaling}x")
+    ax.plot(wl, opacity_data_scaled, label=f"From data. Scaled by {scaling}x")
 
     ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
     ax.set_ylabel(r"$\kappa$ (cm$^2$ g$^{-1}$)")
@@ -141,6 +141,11 @@ if __name__ == "__main__":
     ax.legend()
     plt.savefig("opacity_comparison.pdf", format="pdf")
 
+    txt_file = data_dir / "opacities" / f"hd142527_silicate_{method}_opacities.txt"
+
+    labels, params = np.load(data_dir / "opacities" / "best_fit.npy")
+    comments = "\n".join(labels + ":\t\t" + params)
+    np.savetxt(txt_file, np.column_stack([wl, opacity_data_scaled]), header=comments)
     np.save(
         data_dir / "opacities" / f"hd142527_silicate_{method}_opacities.npy",
         np.array([wl, opacity * opacity_scale]),
