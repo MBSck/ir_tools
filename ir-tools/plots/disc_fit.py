@@ -6,7 +6,7 @@ import numpy as np
 from dynesty import DynamicNestedSampler
 from matadrs.utils.plot import Plotter
 from ppdmod.data import set_data
-from ppdmod.fitting import compute_observable_chi_sq, compute_observables
+from ppdmod.fitting import compute_interferometric_chi_sq, compute_observables
 from ppdmod.options import OPTIONS
 from ppdmod.plot import (
     get_best_fit,
@@ -34,8 +34,8 @@ if __name__ == "__main__":
         data_dir
         / "model_results"
         / "disc_fits"
-        / "2024-11-08"
-        / "results_model_14:47:41"
+        / "2024-11-12"
+        / "results_model_17:45:40"
     )
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -98,8 +98,8 @@ if __name__ == "__main__":
     )
     data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
     sampler = DynamicNestedSampler.restore(path / "sampler.save")
-    results = np.load(path / "results.npz")
-    theta, uncertainties = results["theta"], results["uncertainties"]
+    theta = np.load(path / "theta.npy")
+    uncertainties = np.load(path / "uncertainties.npy")
 
     with open(path / "components.pkl", "rb") as f:
         components = pickle.load(f)
@@ -110,19 +110,14 @@ if __name__ == "__main__":
 
     # TODO: Check why the chi_sq is different here from the value that it should have
     ndim = np.array(theta).size
-    rchi_sq = compute_observable_chi_sq(
+    rchi_sqs = compute_interferometric_chi_sq(
         *compute_observables(components),
         ndim=ndim,
-        reduced=True,
-        rtotal_chi_sq=True,
+        method="linear",
+        reduced=True
     )
-    print(f"Total reduced chi_sq: {rchi_sq:.2f}")
-
-    rchi_sqs = compute_observable_chi_sq(
-        *compute_observables(components), ndim=ndim, reduced=True
-    )
-    rchi_sqs = np.round(rchi_sqs, 2)
-    print(f"Individual reduced chi_sqs: {rchi_sqs}")
+    print(f"Total reduced chi_sq: {rchi_sqs[0]:.2f}")
+    print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
 
     labels = np.load(path / "labels.npy")
     units = np.load(path / "units.npy", allow_pickle=True)
@@ -130,14 +125,14 @@ if __name__ == "__main__":
     # plot_chains(sampler, labels, units, savefig=plot_dir / "chains.pdf")
 
     plot_overview(savefig=plot_dir / "overview.pdf")
-    best_fit_parameters(
-        labels,
-        units,
-        theta,
-        uncertainties,
-        save_as_csv=True,
-        savefig=assets_dir / "disc.csv",
-    )
+    # best_fit_parameters(
+    #     labels,
+    #     units,
+    #     theta,
+    #     uncertainties,
+    #     save_as_csv=True,
+    #     savefig=assets_dir / "disc.csv",
+    # )
     plot_fit(components=components, savefig=plot_dir / "disc.pdf")
     plot_components(
         components, dim, 0.1, 10, norm=0.2, zoom=8, savefig=plot_dir / "components.pdf"
