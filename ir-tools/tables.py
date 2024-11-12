@@ -1,5 +1,5 @@
 import string
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -32,13 +32,15 @@ def observations(fits_files: List[Path], savefig: Optional[Path] = None):
     data = {
         "instrument": [],
         "date": [],
-        "seeing": [],
-        "tau0": [],
+        "sci_seeing": [],
+        "sci_tau0": [],
         "stations": [],
         "array": [],
-        "name": [],
-        "ldd": [],
-        "time": [],
+        "cal_name": [],
+        "cal_ldd": [],
+        "cal_time": [],
+        "cal_seeing": [],
+        "cal_tau0": [],
         "resolution": [],
         "comment": [],
     }
@@ -58,15 +60,17 @@ def observations(fits_files: List[Path], savefig: Optional[Path] = None):
         already_added.add(date)
         data["instrument"].append(readout.instrument_mode.upper())
         data["date"].append(date)
-        data["seeing"].append(round(readout.seeing, 1))
-        data["tau0"].append(round(readout.tau0, 1))
+        data["sci_seeing"].append(round(readout.seeing, 1))
+        data["sci_tau0"].append(round(readout.tau0, 1))
         data["stations"].append(readout.stations)
         data["array"].append(readout.array)
 
-        cal_name, cal_time, cal_ldd = readout.get_calib_info()
-        data["name"].append(cal_name)
-        data["ldd"].append(cal_ldd)
-        data["time"].append(cal_time)
+        cal_name, cal_time, cal_ldd, cal_tau0, cal_seeing = readout.get_calib_info()
+        data["cal_name"].append(cal_name)
+        data["cal_ldd"].append(cal_ldd)
+        data["cal_time"].append(cal_time)
+        data["cal_tau0"].append(round(cal_tau0, 1) if cal_tau0 else "")
+        data["cal_seeing"].append(round(cal_seeing, 1) if cal_seeing else "")
 
         comment, resolution = "", ""
         if readout.instrument.lower() == "pionier":
@@ -216,5 +220,5 @@ if __name__ == "__main__":
     fits_files = list((data_dir / "fitting_data" / "hd142527").glob("*.fits"))
     observations(fits_files)
 
-    sed_fit_dir = data_dir / "opacities" / "silicate_labels_and_weights.npy"
-    opacities(sed_fit_dir)
+    # sed_fit_dir = data_dir / "opacities" / "silicate_labels_and_weights.npy"
+    # opacities(sed_fit_dir)
