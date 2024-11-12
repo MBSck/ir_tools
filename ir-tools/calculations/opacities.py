@@ -189,6 +189,6 @@ if __name__ == "__main__":
 
     labels, params = np.load(source_dir / "best_sed_fit.npy")
     np.save(
-        source_dir / f"hd142527_silicate_{method}_opacities.npy",
+        source_dir / f"silicate_{method}_opacities.npy",
         np.array([wl, op_sil * opacity_scale]),
     )
