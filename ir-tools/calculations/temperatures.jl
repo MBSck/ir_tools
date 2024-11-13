@@ -27,7 +27,6 @@ function compute_temperature_grid(
   radial_dim::Int=2048,
   temperature_range::Vector{Int}=[0, 10000],
   weight_steps::Float64=0.01,
-  ncores::Int=6,
 )
   ν = @. ustrip(c_0 / (wavelengths * u"m"))
   flux_star = @. uconvert(u"erg/s/cm^2/Hz", flux_star * u"Jy")
