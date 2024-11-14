@@ -236,5 +236,5 @@ if __name__ == "__main__":
     )
 
     data = SimpleNamespace(weights=weights, radii=radii, values=matrix)
-    with open("opacity_temps.pkl", "wb") as save_file:
+    with open(source_dir / "opacity_temps.pkl", "wb") as save_file:
         pickle.dump(data, save_file)
