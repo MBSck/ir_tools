@@ -28,14 +28,15 @@ def ptform():
     pass
 
 
+# TODO: Fix the chi square here to get correct fit values
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
     path = (
         data_dir
         / "model_results"
         / "disc_fits"
-        / "2024-11-12"
-        / "results_model_17:45:40"
+        / "2024-11-14"
+        / "results_model_00:32:00"
     )
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -87,7 +88,7 @@ if __name__ == "__main__":
     # plot_fits.plot(**plot_kwargs)
 
     dim = 1024
-    wavelength = np.concatenate(
+    wavelengths = np.concatenate(
         (
             wavelengths["hband"],
             wavelengths["kband"],
@@ -96,7 +97,13 @@ if __name__ == "__main__":
             wavelengths["nband"],
         )
     )
-    data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
+    data = set_data(
+        fits_files,
+        wavelengths=wavelengths,
+        fit_data=["flux", "vis"],
+        set_std_err=["mband"],
+        weights=[1, 0.07258975120604641],
+    )
     sampler = DynamicNestedSampler.restore(path / "sampler.save")
     theta = np.load(path / "theta.npy")
     uncertainties = np.load(path / "uncertainties.npy")
@@ -109,14 +116,13 @@ if __name__ == "__main__":
     ]
 
     # TODO: Check why the chi_sq is different here from the value that it should have
-    ndim = np.array(theta).size
     rchi_sqs = compute_interferometric_chi_sq(
         *compute_observables(components),
-        ndim=ndim,
+        ndim=np.array(theta).size,
         method="linear",
-        reduced=True
+        reduced=True,
     )
-    print(f"Total reduced chi_sq: {rchi_sqs[0]:.2f}")
+    print(f"Total reduced chi sq: {rchi_sqs[0]:.2f}")
     print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
 
     labels = np.load(path / "labels.npy")
@@ -125,14 +131,22 @@ if __name__ == "__main__":
     # plot_chains(sampler, labels, units, savefig=plot_dir / "chains.pdf")
 
     plot_overview(savefig=plot_dir / "overview.pdf")
-    # best_fit_parameters(
-    #     labels,
-    #     units,
-    #     theta,
-    #     uncertainties,
-    #     save_as_csv=True,
-    #     savefig=assets_dir / "disc.csv",
-    # )
+    best_fit_parameters(
+        labels,
+        units,
+        theta,
+        uncertainties,
+        save_as_csv=True,
+        savefig=assets_dir / "disc.csv",
+    )
+    best_fit_parameters(
+        labels,
+        units,
+        theta,
+        uncertainties,
+        save_as_csv=False,
+        savefig=assets_dir / "disc.csv",
+    )
     plot_fit(components=components, savefig=plot_dir / "disc.pdf")
     plot_components(
         components, dim, 0.1, 10, norm=0.2, zoom=8, savefig=plot_dir / "components.pdf"
