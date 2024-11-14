@@ -232,7 +232,7 @@ if __name__ == "__main__":
         flux * u.Jy,
         interp_op_sil,
         interp_op_cont,
-        njobs=100
+        njobs=50
     )
 
     data = SimpleNamespace(weights=weights, radii=radii, values=matrix)
