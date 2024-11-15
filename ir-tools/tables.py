@@ -1,7 +1,7 @@
 import string
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -106,7 +106,7 @@ def dust_species(
     names: List[str],
     methods: List[str],
     sizes: List[float],
-    fmaxs: Optional[List[float]] = None,
+    fmaxs: List[float] | None = None,
 ) -> None:
     """Read dust species to table."""
     data = {
@@ -150,9 +150,9 @@ def best_fit_parameters(
     labels: np.ndarray,
     units: np.ndarray,
     values: np.ndarray,
-    uncertainties: Optional[np.ndarray] = None,
-    savefig: Optional[Path] = None,
-    save_as_csv: Optional[bool] = True,
+    uncertainties: np.ndarray | None = None,
+    savefig: Path | None = None,
+    save_as_csv: bool = True,
 ) -> None:
     """Make a (.pdf) file containing a table of the fit parameters."""
     labels, units = format_labels(labels, units, split=True)
@@ -180,7 +180,7 @@ def best_fit_parameters(
                 table.add_hline()
 
                 for label, unit, value in zip(labels, units, values):
-                    table.add_row((NoEscape(label), NoEscape(unit), value))
+                    table.add_row((NoEscape(label), NoEscape(unit), NoEscape(value)))
 
                 table.add_hline()
 
