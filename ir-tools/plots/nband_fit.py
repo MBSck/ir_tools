@@ -5,7 +5,13 @@ import astropy.units as u
 import numpy as np
 from dynesty import DynamicNestedSampler
 from ppdmod.data import set_data
-from ppdmod.fitting import get_best_fit, compute_sed_chi_sq
+from ppdmod.fitting import (
+    get_best_fit,
+    compute_nband_fit_chi_sq,
+    get_labels,
+    get_units,
+    get_theta,
+)
 from ppdmod.options import OPTIONS
 from ppdmod.plot import plot_corner, plot_overview, plot_sed
 
@@ -17,7 +23,7 @@ def ptform():
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/sed_fits/2024-10-28/")
+    path = Path("/Users/scheuck/Data/model_results/nband_fit/2024-11-16/")
     dir_name = "averaged"
 
     path /= dir_name
@@ -31,17 +37,18 @@ if __name__ == "__main__":
     # wavelength_range = None
     wavelength_range = [8.0, 13.1] * u.um
     data = set_data(
-        list((data_dir / "sed_fit" / dir_name).glob("*fits")),
+        list((data_dir / "nband_fit" / dir_name).glob("*fits")),
         wavelengths="all",
         wavelength_range=wavelength_range,
         fit_data=["flux"],
     )
 
-    labels = np.load(path / "labels.npy").tolist()
-    units = np.load(path / "units.npy", allow_pickle=True)
+    with open(path / "components.pkl", "rb") as f:
+        components = pickle.load(f)
 
     sampler = DynamicNestedSampler.restore(path / "sampler.save")
     theta, uncertainties = get_best_fit(sampler)
+    labels, units = get_labels(components), get_units(components)
     print(f"Best fit parameters:\n{np.array(theta)}")
 
     indices = list(
@@ -55,13 +62,11 @@ if __name__ == "__main__":
     silicate_weights = np.array(theta)[indices[1:]]
     np.save(assets_dir / "silicate_labels_and_weights.npy", silicate_weights)
 
-    with open(path / "components.pkl", "rb") as f:
-        components = pickle.load(f)
-
-    rchi_sq = compute_sed_chi_sq(
+    rchi_sq = compute_nband_fit_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
+        ndim=theta.size,
+        method="linear",
         reduced=True,
-        nfree=theta.size,
     )
     print(f"rchi_sq: {rchi_sq:.2f}")
 

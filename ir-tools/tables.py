@@ -27,7 +27,7 @@ CHEMICAL_FORMULAS = {
 }
 
 
-def observations(fits_files: List[Path], savefig: Optional[Path] = None):
+def observations(fits_files: List[Path], savefig: Path | None = None):
     """Read a FITS file and return the data as an astropy table."""
     data = {
         "instrument": [],
@@ -156,7 +156,9 @@ def best_fit_parameters(
 ) -> None:
     """Make a (.pdf) file containing a table of the fit parameters."""
     labels, units = format_labels(labels, units, split=True)
-    uncertainties = np.round(np.abs(uncertainties - values[:, np.newaxis]), 2)
+    if uncertainties is not None:
+        uncertainties = np.round(np.abs(uncertainties - values[:, np.newaxis]), 2)
+
     values = [
         f"{value:.2e}" if np.abs(value) < 1e-2 else f"{value:.2f}" for value in values
     ]

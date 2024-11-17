@@ -3,8 +3,8 @@ from pathlib import Path
 
 import astropy.units as u
 import numpy as np
+from dynesty import DynamicNestedSampler
 from matadrs.utils.plot import Plotter
-from ppdmod.component import Component
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -75,8 +75,8 @@ if __name__ == "__main__":
         data_dir
         / "model_results"
         / "disc_fits"
-        / "2024-11-15"
-        / "results_model_11:50:48"
+        / "2024-11-17"
+        / "results_model_02:06:48"
     )
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -109,14 +109,13 @@ if __name__ == "__main__":
         wavelengths=wavelengths,
         fit_data=["flux", "vis"],
         set_std_err=["mband"],
-        weights=[1, 0.07258975120604641],
     )
-    # uncertainties = np.load(path / "uncertainties.npy")
+    uncertainties = np.load(path / "uncertainties.npy")
     with open(path / "components.pkl", "rb") as f:
         components = pickle.load(f)
 
     theta = get_theta(components)
-    component_labels = list(map(Component.label, components))
+    component_labels = [component.label for component in components]
 
     # TODO: Check why the chi_sq is different here from the value that it should have
     rchi_sqs = compute_interferometric_chi_sq(
@@ -130,6 +129,7 @@ if __name__ == "__main__":
 
     labels = get_labels(components)
     units = get_units(components)
+    sampler = DynamicNestedSampler.restore(path / "sampler.save")
     plot_corner(sampler, labels, units, savefig=plot_dir / "corner.pdf")
     # plot_chains(sampler, labels, units, savefig=plot_dir / "chains.pdf")
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
         labels,
         units,
         theta,
-        # uncertainties,
+        uncertainties,
         save_as_csv=True,
         savefig=assets_dir / "disc.csv",
     )
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         labels,
         units,
         theta,
-        # uncertainties,
+        uncertainties,
         save_as_csv=False,
         savefig=assets_dir / "disc",
     )
