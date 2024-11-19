@@ -75,8 +75,8 @@ if __name__ == "__main__":
         data_dir
         / "model_results"
         / "disc_fits"
-        / "2024-11-17"
-        / "results_model_02:06:48"
+        / "2024-11-19"
+        / "free_outer"
     )
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -109,6 +109,7 @@ if __name__ == "__main__":
         wavelengths=wavelengths,
         fit_data=["flux", "vis"],
         set_std_err=["mband"],
+        weights=[1, 0.02808218],
     )
     uncertainties = np.load(path / "uncertainties.npy")
     with open(path / "components.pkl", "rb") as f:

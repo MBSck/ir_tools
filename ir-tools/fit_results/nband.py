@@ -6,11 +6,10 @@ import numpy as np
 from dynesty import DynamicNestedSampler
 from ppdmod.data import set_data
 from ppdmod.fitting import (
-    get_best_fit,
     compute_nband_fit_chi_sq,
+    get_best_fit,
     get_labels,
     get_units,
-    get_theta,
 )
 from ppdmod.options import OPTIONS
 from ppdmod.plot import plot_corner, plot_overview, plot_sed
@@ -23,7 +22,7 @@ def ptform():
 
 
 if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/model_results/nband_fit/2024-11-16/")
+    path = Path("/Users/scheuck/Data/model_results/nband_fit/2024-11-18/")
     dir_name = "averaged"
 
     path /= dir_name
