@@ -14,7 +14,6 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS
 from ppdmod.plot import (
-    plot_chains,
     plot_components,
     plot_corner,
     plot_fit,
@@ -38,7 +37,7 @@ if __name__ == "__main__":
         / "model_results"
         / "ring_fit"
         / "2024-11-19"
-        / "gravity"
+        / "pionier2"
     )
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -59,8 +58,8 @@ if __name__ == "__main__":
     dim = 1024
     wavelengths = np.concatenate(
         (
-            # wavelengths["hband"],
-            wavelengths["kband"],
+            wavelengths["hband"],
+            # wavelengths["kband"],
             # wavelengths["lband"],
             # wavelengths["mband"],
             # wavelengths["nband"],
@@ -92,7 +91,6 @@ if __name__ == "__main__":
     units = get_units(components)
     sampler = DynamicNestedSampler.restore(path / "sampler.save")
     plot_corner(sampler, labels, units, savefig=plot_dir / "corner.pdf")
-    # plot_chains(sampler, labels, units, savefig=plot_dir / "chains.pdf")
 
     plot_overview(savefig=plot_dir / "overview.pdf")
     best_fit_parameters(
