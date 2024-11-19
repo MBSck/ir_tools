@@ -76,7 +76,7 @@ if __name__ == "__main__":
         / "model_results"
         / "disc_fits"
         / "2024-11-19"
-        / "free_outer"
+        / "inner_fixed_outer_free"
     )
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
