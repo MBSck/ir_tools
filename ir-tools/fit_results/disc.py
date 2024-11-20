@@ -71,13 +71,8 @@ def ptform():
 # TODO: Fix the chi square here to get correct fit values
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    path = (
-        data_dir
-        / "model_results"
-        / "disc_fits"
-        / "2024-11-19"
-        / "inner_fixed_outer_free"
-    )
+    path = data_dir / "model_results" / "disc_fits" / "2024-11-20"
+    path /= "test_inner_outer_fixed_new_calc"
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
     assets_dir.mkdir(exist_ok=True, parents=True)
@@ -109,7 +104,7 @@ if __name__ == "__main__":
         wavelengths=wavelengths,
         fit_data=["flux", "vis"],
         set_std_err=["mband"],
-        weights=[1, 0.02808218],
+        weights=[1.0, 0.02094934],
     )
     uncertainties = np.load(path / "uncertainties.npy")
     with open(path / "components.pkl", "rb") as f:
