@@ -28,9 +28,9 @@ def correct_vis_to_vis2(fits_file: Path) -> None:
         hdul.flush()
 
 
-def get_source(sheet: Path, target: str) -> pd.DataFrame:
+def get_source(excel_file: Path, target: str) -> pd.DataFrame:
     """Gets the night a target was observed for some criteria."""
-    df = pd.read_excel(sheet, skiprows=1, header=[0, 1])
+    df = pd.read_excel(excel_file, skiprows=1, header=[0, 1])
     target_column = df["Target"].iloc[:, 0].astype(str)
     df_cleaned = df.dropna(subset=[("Target", target_column.name)])
     return df_cleaned[
@@ -38,17 +38,20 @@ def get_source(sheet: Path, target: str) -> pd.DataFrame:
     ]
 
 
-def get_source_list(
-    excel_file: Path, sheet_name: str = "target_list_status"
+def get_sources(
+    excel_file: Path, sheet_name: str = "target_list_status", band: str = "lband"
 ) -> List[str]:
     """Gets the list of source names to sort from the excel file."""
     df = pd.read_excel(excel_file, sheet_name=sheet_name, header=[0, 1])
-    nband_selection = df["Selected"]["for LN paper"].astype(str)
-    df_filtered = df[nband_selection != "no"]
-    df_cleaned = df_filtered.dropna(subset=[("Selected", nband_selection.name)])
-    lband_selection = df_cleaned["Selected"]["for L paper"].astype(str)
-    df_final = df_cleaned[~lband_selection.isin(["no", "tbd"])]
-    return df_final["Name"].iloc[:, 0].tolist()
+    lband_selection = df["Selected"]["for L paper"].astype(str)
+    df = df.dropna(subset=[("Selected", lband_selection.name)])
+    df = df[~lband_selection.isin(["no", "tbd"])]
+
+    if band == "nband":
+        nband_selection = df["Selected"]["for LN paper"].astype(str)
+        df = df[nband_selection != "no"]
+
+    return sorted(df["Name"].iloc[:, 0].tolist())
 
 
 def get_dir_name(source: str) -> str:
@@ -95,6 +98,7 @@ def get_date(night: str, nights: pd.DataFrame) -> str | None:
     return key
 
 
+# TODO: Add here the functionality to automatically make an exel sheet out of this
 def sort_target(sheet: Path, source: str, source_dir: Path, target_dir: Path) -> None:
     """Sorts the data for a target.
 
@@ -159,6 +163,7 @@ if __name__ == "__main__":
     excel_file = data_dir / "survey" / "MATISSE data overview.xlsx"
     source_dir = data_dir / "reduced_data" / "jozsef_reductions" / "targets5"
     target_dir = data_dir / "survey"
+    sources = get_sources(excel_file)
 
-    for target in tqdm(get_source_list(excel_file), "Sorting data..."):
+    for target in tqdm(sources, "Sorting data..."):
         sort_target(excel_file, target, source_dir, target_dir)
