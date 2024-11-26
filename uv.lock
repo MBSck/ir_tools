@@ -1070,6 +1070,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pyfftw" },
     { name = "scipy" },
+    { name = "toml" },
     { name = "tqdm" },
 ]
 
@@ -1091,6 +1092,7 @@ requires-dist = [
     { name = "sphinx-autobuild", marker = "extra == 'dev'", specifier = "==2021.3.14" },
     { name = "sphinx-autodoc-typehints", marker = "extra == 'dev'", specifier = "==1.23" },
     { name = "sphinx-rtd-theme", marker = "extra == 'dev'", specifier = "==1.2.0" },
+    { name = "toml", specifier = ">=0.10.2" },
     { name = "tqdm", specifier = ">=4.64.1" },
 ]
 
@@ -1259,7 +1261,7 @@ wheels = [
 
 [[package]]
 name = "ppdmod"
-version = "0.9.1"
+version = "1.0.0"
 source = { editable = "../ppdmod" }
 dependencies = [
     { name = "astropy" },
