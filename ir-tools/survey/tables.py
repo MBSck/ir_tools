@@ -53,24 +53,23 @@ def source_table(excel_file: Path) -> None:
 def source_info(data_dir: Path, sources: List[str]) -> None:
     keys = [
         "source",
+        "tpl_start",
         "year",
         "date",
-        "date_sort",
-        "tpl_start",
-        "pipe_version",
         "sci_seeing",
         "sci_tau0",
+        "cal_seeing",
+        "cal_tau0",
+        "array",
+        "band",
+        "chopped",
+        "pipe_version",
         "cal_name",
         "cal_ra",
         "cal_dec",
         "cal_diam",
         "cal_diam_err",
-        "cal_seeing",
-        "cal_tau0",
         "cal_jdsc",
-        "array",
-        "band",
-        "chopped",
     ]
     dfs = []
     sources_sorted = query(sources).sort_values(by="RA")["source"].tolist()
@@ -85,7 +84,6 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
             date = datetime.strptime(tpl_start.split("T")[0], "%Y-%m-%d")
             source_info["year"].append(date.year)
             source_info["date"].append(f"{date.strftime('%B')[:3]} {date.day}")
-            source_info["date_sort"].append(date)
             source_info["tpl_start"].append(tpl_start)
             source_info["pipe_version"].append(
                 header["HIERARCH ESO PRO REC1 PIPE ID"].split("/")[1]
@@ -148,7 +146,9 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
             source_info["band"].append(header["HIERARCH ESO DET NAME"].split("-")[1])
             source_info["chopped"].append("nochop" in fits_file.name.lower())
 
-        dfs.append(pd.DataFrame(source_info).sort_values(by="date_sort"))
+        source_df = pd.DataFrame(source_info)
+        source_df["tpl_start"] = pd.to_datetime(source_df["tpl_start"])
+        dfs.append(source_df.sort_values(by="tpl_start"))
 
     df = pd.concat(dfs, axis=0, ignore_index=True)
     coord = SkyCoord(
@@ -163,7 +163,7 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
             unit=u.deg, sep=":", precision=2, alwayssign=True
         )
     ]
-    df.drop(columns=["date_sort"], inplace=True)
+    df["tpl_start"] = df["tpl_start"].dt.strftime('%Y-%m-%dT%H:%M:%S')
     df.to_excel("source_tpl_table.xlsx", index=False)
 
 
