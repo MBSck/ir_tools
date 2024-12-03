@@ -24,6 +24,7 @@ from ppdmod.plot import (
     plot_intermediate_products,
     plot_overview,
 )
+from ppdmod.utils import windowed_linspace
 
 from ..tables import best_fit_parameters
 
@@ -71,19 +72,20 @@ def ptform():
 # TODO: Fix the chi square here to get correct fit values
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    path = data_dir / "model_results" / "disc_fits" / "2024-11-20"
-    path /= "test_inner_outer_fixed_new_calc"
+    path = data_dir / "model_results" / "disc_fits" / "2024-12-03"
+    path /= "test_average_all_free"
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
     assets_dir.mkdir(exist_ok=True, parents=True)
 
     fits_dir = data_dir / "fitting_data" / "hd142527"
+    binning = OPTIONS.data.binning
     wavelengths = {
         "hband": [1.7] * u.um,
         "kband": [2.15] * u.um,
-        "lband": np.linspace(3.1, 3.4, 6) * u.um,
-        "mband": np.linspace(4.7, 4.9, 4) * u.um,
-        "nband": np.linspace(8, 15, 35) * u.um,
+        "lband": windowed_linspace(3.1, 3.4, binning.lband.value) * u.um,
+        "mband": windowed_linspace(4.7, 4.9, binning.mband.value) * u.um,
+        "nband": windowed_linspace(8, 13, binning.nband.value) * u.um,
     }
 
     OPTIONS.model.output = "non-normed"
@@ -102,9 +104,12 @@ if __name__ == "__main__":
     data = set_data(
         fits_files,
         wavelengths=wavelengths,
-        fit_data=["flux", "vis"],
-        set_std_err=["mband"],
-        weights=[1.0, 0.02094934],
+        # fit_data=["flux", "vis"],
+        fit_data=["flux", "vis", "t3"],
+        # fit_data=["t3"],
+        # set_std_err=["mband"],
+        # weights=[1.0, 0.02094934],
+        average=True
     )
     uncertainties = np.load(path / "uncertainties.npy")
     with open(path / "components.pkl", "rb") as f:
@@ -130,6 +135,11 @@ if __name__ == "__main__":
     # plot_chains(sampler, labels, units, savefig=plot_dir / "chains.pdf")
 
     plot_overview(savefig=plot_dir / "overview.pdf")
+    plot_overview(bands=["nband"], savefig=plot_dir / "overview_nband.pdf")
+    plot_overview(
+        bands=["hband", "kband", "lband", "mband"],
+        savefig=plot_dir / "overview_hlkmband.pdf",
+    )
     best_fit_parameters(
         labels,
         units,
@@ -147,14 +157,27 @@ if __name__ == "__main__":
         savefig=assets_dir / "disc",
     )
     plot_fit(components=components, savefig=plot_dir / "disc.pdf")
+    plot_fit(
+        components=components, bands=["nband"], savefig=plot_dir / "disc_nband.pdf"
+    )
+    plot_fit(
+        components=components,
+        bands=["hband", "kband", "lband", "mband"],
+        ylims={"t3": [-15, 15]},
+        savefig=plot_dir / "disc_hklmband.pdf",
+    )
+    zoom = 5
     plot_components(
-        components, dim, 0.1, 10, norm=0.2, zoom=8, savefig=plot_dir / "components.pdf"
+        components, dim, 0.1, 3.5, norm=0.2, zoom=zoom, savefig=plot_dir / "image_lband.png"
     )
-    plot_component_mosaic(
-        components, dim, 0.1, norm=0.2, savefig=plot_dir / "models.pdf", zoom=8
+    plot_components(
+        components, dim, 0.1, 10.5, norm=0.2, zoom=zoom, savefig=plot_dir / "image_nband.png"
     )
-    plot_intermediate_products(
-        dim, wavelengths, components, component_labels, save_dir=plot_dir
-    )
+    # plot_component_mosaic(
+    #     components, dim, 0.1, norm=0.2, savefig=plot_dir / "models.pdf", zoom=8
+    # )
+    # plot_intermediate_products(
+    #     dim, wavelengths, components, component_labels, save_dir=plot_dir
+    # )
     # plot_interferometric_observables([1, 13.5]*u.um, components,
     #                                  component_labels, save_dir=fit_plot_dir)
