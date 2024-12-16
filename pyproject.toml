@@ -35,6 +35,7 @@ dependencies = [
     "pandas>=2.2.3",
     "ppdmod",
     "pylatex>=1.4.2",
+    "pypdf2>=3.0.1",
     "scipy>=1.13.1",
     "skycalc-cli>=1.4",
     "tqdm>=4.66.5",
