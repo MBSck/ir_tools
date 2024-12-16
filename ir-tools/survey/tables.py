@@ -56,10 +56,10 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
         "tpl_start",
         "year",
         "date",
-        "sci_seeing",
-        "sci_seeing_slope",
-        "sci_tau0",
-        "sci_tau0_slope",
+        "sci_seeing_start",
+        "sci_seeing_end",
+        "sci_tau0_start",
+        "sci_tau0_end",
         "cal_seeing",
         "cal_tau0",
         "array",
@@ -90,15 +90,15 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
             source_info["pipe_version"].append(
                 header["HIERARCH ESO PRO REC1 PIPE ID"].split("/")[1]
             )
-            sci_seeing = header["HIERARCH ESO ISS AMBI FWHM START"]
-            sci_seeing_slope = sci_seeing - header["HIERARCH ESO ISS AMBI FWHM END"]
-            source_info["sci_seeing"].append(sci_seeing)
-            source_info["sci_seeing_slope"].append(sci_seeing_slope)
+            sci_seeing_start = header["HIERARCH ESO ISS AMBI FWHM START"]
+            sci_seeing_end = header["HIERARCH ESO ISS AMBI FWHM END"]
+            source_info["sci_seeing_start"].append(sci_seeing_start)
+            source_info["sci_seeing_end"].append(sci_seeing_end)
 
-            sci_tau0 = np.round(header["HIERARCH ESO ISS AMBI TAU0 END"] * 1e3, 1)
-            sci_tau0_slope = np.round(sci_tau0 - header["HIERARCH ESO ISS AMBI TAU0 START"] * 1e3, 1)
-            source_info["sci_tau0"].append(sci_tau0)
-            source_info["sci_tau0_slope"].append(sci_tau0_slope)
+            sci_tau0_start = np.round(header["HIERARCH ESO ISS AMBI TAU0 START"] * 1e3, 1)
+            sci_tau0_end = np.round(header["HIERARCH ESO ISS AMBI TAU0 END"] * 1e3, 1)
+            source_info["sci_tau0_start"].append(sci_tau0_start)
+            source_info["sci_tau0_end"].append(sci_tau0_end)
 
             cal_name, cal_ra, cal_dec = "", 0, 0
             cal_diam, cal_diam_err, cal_seeing = "", "", ""
