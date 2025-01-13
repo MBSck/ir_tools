@@ -144,7 +144,7 @@ def downsample(
                 values = [np.ma.masked_array(value, mask=np.zeros_like(value).astype(bool)) for value in values]
 
             interp_values, interp_errs = [], []
-            for value, err in zip(values, errs):
+            for value, err, new_flag in zip(values, errs, hdul_new[card].data["flag"]):
                 interp_value = sampling_function(
                     wavelengths, grid, value.flatten(),
                     False, phases, **sampling_kwargs
@@ -157,17 +157,22 @@ def downsample(
                 interp_errs.append(interp_err)
 
                 if do_plot:
-                    if card in ["oi_flux", "oi_vis", "oi_vis2"]:
-                        ylim = (0, None)
+                    if use_flags:
+                        interp_value = np.ma.masked_array(interp_value, mask=new_flag)
+                        interp_err = np.ma.masked_array(interp_err, mask=new_flag)
+
+                    if card in ["oi_flux", "oi_vis"]:
+                        ylim = (0, np.percentile(value.data, 80))
+                    elif card in ["oi_vis2"]:
+                        ylim = (0, 1)
                     else:
-                        ylim = None
+                        ylim = (np.percentile(value.data, 10), np.percentile(value.data, 90))
 
                     slices = slice(2, -2)
                     axarr[0, 0].set_title("Original vs Downsampled")
                     axarr[index, 0].plot(grid[slices], value.flatten()[slices], label="Original")
                     axarr[index, 0].plot(wavelengths[slices], interp_value[slices], label="Downsampled")
                     axarr[index, 0].set_ylim(ylim)
-                    ylim = list(axarr[index, 0].get_ylim())
 
                     axarr[0, 1].set_title("Original")
                     line = axarr[index, 1].plot(grid[slices], value.flatten()[slices], label="Original")
@@ -198,14 +203,16 @@ def downsample(
         hdul_new.flush()
 
         if do_plot:
-            plt.savefig(save_dir / f"{fits_to_sample_from.stem}_downsampled.pdf", format="pdf")
+            plt.savefig(save_dir / f"{fits_to_downsample.stem}_downsampled.pdf", format="pdf")
+            plt.close()
 
 
 if __name__ == "__main__":
     fits_dir = Path().home() / "Data" / "fitting_data" / "hd142527"
-    low_res_fits = list(fits_dir.glob("*2022-03-23*_N_*"))[0]
-    fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
-    downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
-    # low_res_fits = fits_dir / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
-    # for fits_file in fits_dir.glob("*2022-03-14*"):
-    #     downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=True, do_plot=True)
+    # low_res_fits = list(fits_dir.glob("*2022-03-23*_N_*"))[0]
+    # fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
+    # downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
+    low_res_fits = fits_dir / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
+    fits_files = list(fits_dir.glob("*2022-03-14*"))
+    for fits_file in fits_files:
+        downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=True, do_plot=True)
