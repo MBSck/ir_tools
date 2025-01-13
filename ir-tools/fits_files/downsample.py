@@ -141,7 +141,7 @@ def downsample(
                 flags = hdul[card].data["flag"]
                 values = [np.ma.masked_array(value, mask=flag) for value, flag in zip(values, flags)]
             else:
-                values = [np.ma.masked_array(value, mask=np.ones_like(value).astype(bool)) for value in values]
+                values = [np.ma.masked_array(value, mask=np.zeros_like(value).astype(bool)) for value in values]
 
             interp_values, interp_errs = [], []
             for value, err in zip(values, errs):
@@ -157,11 +157,17 @@ def downsample(
                 interp_errs.append(interp_err)
 
                 if do_plot:
+                    if card in ["oi_flux", "oi_vis", "oi_vis2"]:
+                        ylim = (0, None)
+                    else:
+                        ylim = None
+
                     slices = slice(2, -2)
                     axarr[0, 0].set_title("Original vs Downsampled")
                     axarr[index, 0].plot(grid[slices], value.flatten()[slices], label="Original")
                     axarr[index, 0].plot(wavelengths[slices], interp_value[slices], label="Downsampled")
-                    axarr[index, 0].set_ylim(axarr[index, 0].get_ylim())
+                    axarr[index, 0].set_ylim(ylim)
+                    ylim = list(axarr[index, 0].get_ylim())
 
                     axarr[0, 1].set_title("Original")
                     line = axarr[index, 1].plot(grid[slices], value.flatten()[slices], label="Original")
@@ -172,7 +178,7 @@ def downsample(
                         color=line[0].get_color(),
                         alpha=0.5,
                     )
-                    axarr[index, 1].set_ylim(axarr[index, 0].get_ylim())
+                    axarr[index, 1].set_ylim(ylim)
 
                     axarr[0, 2].set_title("Downsampled")
                     line = axarr[index, 2].plot(wavelengths[slices], interp_value[slices], label="Downsampled")
@@ -183,7 +189,7 @@ def downsample(
                         color=line[0].get_color(),
                         alpha=0.5,
                     )
-                    axarr[index, 2].set_ylim(axarr[index, 0].get_ylim()[1])
+                    axarr[index, 2].set_ylim(ylim)
 
             interp_values, interp_errs = np.array(interp_values), np.array(interp_errs)
             hdul_new[card].data[key[0]] = interp_values
@@ -198,5 +204,8 @@ def downsample(
 if __name__ == "__main__":
     fits_dir = Path().home() / "Data" / "fitting_data" / "hd142527"
     low_res_fits = list(fits_dir.glob("*2022-03-23*_N_*"))[0]
-    high_res_fits = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
-    downsample(fits_dir / "downsampled", high_res_fits, low_res_fits, use_flags=True, do_plot=True)
+    fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
+    downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
+    # low_res_fits = fits_dir / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
+    # for fits_file in fits_dir.glob("*2022-03-14*"):
+    #     downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=True, do_plot=True)
