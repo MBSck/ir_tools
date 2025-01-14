@@ -66,7 +66,6 @@ def sampled_interpolation(
     return downsampled_values
 
 
-# TODO: Think of a way to downsample L band data without pulling window into it
 def downsample(
     save_dir : Path,
     fits_to_downsample: Path,
@@ -101,6 +100,10 @@ def downsample(
         Whether to use the flags in the data to do the downsampling.
     save_dir : pathlib.Path
         The save directory for the plots and downsampled fits.
+
+    Notes
+    -----
+    For downsampling N band turn of use of flagging. For L band have it on.
     """
     save_dir.mkdir(exist_ok=True, parents=True)
     downsampled_fits = save_dir / f"{fits_to_downsample.stem}_DOWNSAMP.fits"
@@ -203,7 +206,7 @@ def downsample(
         hdul_new.flush()
 
         if do_plot:
-            plt.savefig(save_dir / f"{fits_to_downsample.stem}_downsampled.pdf", format="pdf")
+            plt.savefig(save_dir / f"{fits_to_downsample.stem}_downsampled.png", format="png", dpi=300)
             plt.close()
 
 
@@ -213,6 +216,6 @@ if __name__ == "__main__":
     # fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
     # downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
     low_res_fits = fits_dir / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
-    fits_files = list(fits_dir.glob("*2022-03-14*"))
+    fits_files = list(fits_dir.glob("*2023-08-12*"))
     for fits_file in fits_files:
         downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=True, do_plot=True)
