@@ -3,9 +3,10 @@ from pathlib import Path
 from typing import List, Dict, Tuple
 
 import astropy.units as u
-from astropy.io import fits
 import numpy as np
 import yaml
+from astropy.io import fits
+from tqdm import tqdm
 
 
 def flag_gravity(fits_file: Path) -> None:
@@ -30,8 +31,13 @@ def flag_wavelength_range(hdu: fits.BinTableHDU, wavelengths: List[float],
     wavelenght : list of float
     wavelength_ranges : list of tuple of float
     """
-    masks = [(wavelengths >= lower) & (wavelengths <= upper) for lower, upper in wavelength_ranges]
-    hdu.data["flag"] = ~np.logical_or.reduce(masks) | hdu.data["flag"]
+    if wavelength_ranges:
+        masks = [(wavelengths >= lower) & (wavelengths <= upper) for lower, upper in wavelength_ranges]
+        flag = ~np.logical_or.reduce(masks) | hdu.data["flag"]
+    else:
+        flag = np.ones_like(hdu.data["flag"]).astype(bool)
+
+    hdu.data["flag"] = flag
 
 
 def flag_baselines(hdu: fits.BinTableHDU, baselines_to_flag):
@@ -44,6 +50,10 @@ def flag_baselines(hdu: fits.BinTableHDU, baselines_to_flag):
         # mask = np.isin(baseline_ids, baselines_to_flag)
         # hdu.data["flag"][mask] = True
         ...
+
+# TODO: Finish this (especially relevant to one of the N band files)
+def remove_flag(hdu: fits.BinTableHDU):
+    ...
 
 
 def flag_oifits(fits_file: Path, flagging_rules: Dict, save_dir: Path) -> None:
@@ -79,6 +89,6 @@ if __name__ == "__main__":
     with open(save_dir / "flagging.yaml", "r") as f:
         data = yaml.safe_load(f)
 
-    for fits_file, flagging_rules in data.items():
+    for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging files..."):
         flag_oifits((path / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
 
