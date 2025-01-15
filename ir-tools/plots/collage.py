@@ -1,5 +1,6 @@
+import sys
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import astropy.units as u
 import numpy as np
@@ -218,7 +219,7 @@ def plot_vis(ax: Axes, hdul) -> Axes:
     x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
     plot_data(ax, x, data["visamp"], data["visamperr"], data["flag"])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
-    # ax.set_ylabel(r"$F_{\nu}$ $\left(\mathrm{Jy}\right)$")
+    ax.set_ylabel(r"$F_{\nu,\,\mathrm{corr}}$ $\left(\mathrm{Jy}\right)$")
     return ax
 
 
@@ -250,19 +251,34 @@ def plot_t3(ax: Axes, hdul) -> Axes:
     return ax
 
 
-def plot_collage() -> None:
-    fig, ax = plt.subplots()
+# TODO: Add the GRAVITY indices here
+# TODO: Add a check for what datasets are contained (PIONIER & GRAVITY) -> usually oi_vis2 and oi_t3
+def plot_collage(fits_file: Path, plots: List[str] | str = "all", cols: int = 3,
+                 cell_width: int = 4, save_dir: Path | None = None) -> None:
+    """Plots all the specified observables in a collage."""
+    module = sys.modules[__name__]
+    if plots == "all":
+        plots = ["uv", "flux", "t3", "vis2", "vis", "visphi"]
+
+    rows = int(np.ceil(len(plots) / cols))
+    figsize = (cols * cell_width, rows * cell_width)
+    _, axarr = plt.subplots(rows, cols, figsize=figsize,
+                            sharex=True, constrained_layout=True)
     with fits.open(fits_file) as hdul:
-        # TODO: Find a way to determine what is in the file
-        # ax = plot_flux(ax, hdul)
-        # ax = plot_vis(ax, hdul)
-        ax = plot_vis2(ax, hdul)
-        # ax = plot_visphi(ax, hdul)
-        # ax = plot_t3(ax, hdul)
-    plt.show()
+        for ax, plot in zip(axarr.flatten(), plots):
+            ax = getattr(module, f"plot_{plot}")(ax, hdul)
+
+    [ax.remove() for index, ax in enumerate(axarr.flatten()) if index >= len(plots)]
+
+    if save_dir is not None:
+        plt.savefig(save_dir / f"{fits_file.stem}.png", format="png", dpi=300)
+    else:
+        plt.show()
+
+    plt.close()
 
 
 if __name__ == "__main__":
     path = Path().home() / "Data" / "fitting" / "hd142527" / "flagged"
-    fits_file = path / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
-    plot_collage()
+    for fits_file in path.glob("*.fits"):
+        plot_collage(fits_file, ["flux", "t3", "vis2", "vis"], cols=4, save_dir=path)
