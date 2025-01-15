@@ -1,15 +1,14 @@
 import sys
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import List, Tuple
 
 import astropy.units as u
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
 from astropy.coordinates import EarthLocation
 from astropy.io import fits
 from matplotlib.axes import Axes
-from matplotlib.figure import Figure
+from tqdm import tqdm
 
 # from .tools import unwrap_phases
 
@@ -280,5 +279,5 @@ def plot_collage(fits_file: Path, plots: List[str] | str = "all", cols: int = 3,
 
 if __name__ == "__main__":
     path = Path().home() / "Data" / "fitting" / "hd142527" / "flagged"
-    for fits_file in path.glob("*.fits"):
-        plot_collage(fits_file, ["flux", "t3", "vis2", "vis"], cols=4, save_dir=path)
+    for fits_file in tqdm(list(path.glob("*.fits")), desc="Plotting files..."):
+        plot_collage(fits_file, ["flux", "t3", "vis2", "vis"], cols=4, save_dir=path / "plots")
