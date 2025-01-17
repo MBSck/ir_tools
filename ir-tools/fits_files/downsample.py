@@ -151,13 +151,19 @@ def downsample(
     if do_plot:
         axarr = plt.subplots(len(cards), 3, figsize=(10, 12))[1]
 
-    with fits.open(fits_to_sample_from) as hdul:
-        wavelengths = hdul["oi_wavelength"].data["eff_wave"]
-        new_card_flags = [hdul[card].data["flag"] for card in cards]
+    with fits.open(fits_to_sample_from) as old_hdul:
+        wavelengths = old_hdul["oi_wavelength"].data["eff_wave"]
+        bands = old_hdul["oi_wavelength"].data["eff_band"]
+        new_card_flags = [old_hdul[card].data["flag"] for card in cards]
+        wl_hdu = fits.BinTableHDU(Table([wavelengths, bands], names=("EFF_WAVE", "EFF_BAND")))
+        for key, value in old_hdul["oi_wavelength"].header.items():
+            if key not in wl_hdu.header:
+                wl_hdu.header[key] = value
 
     with fits.open(fits_to_downsample, "readonly") as hdul, fits.open(
         downsampled_fits, "update") as hdul_new:
         grid = hdul["oi_wavelength"].data["eff_wave"]
+        hdul_new["oi_wavelength"] = wl_hdu
 
         for index, (card, key, new_flags) in enumerate(zip(cards, keys, new_card_flags)):
             values = hdul[card].data[key[0]]
@@ -244,6 +250,6 @@ if __name__ == "__main__":
     # fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
     # downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
     low_res_fits = fits_dir / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
-    fits_files = list(fits_dir.glob("*2023-08-12*"))
+    fits_files = list((fits_dir / "to_downsample").glob("*fits"))
     for fits_file in tqdm(fits_files, desc="Downsampling files..."):
         downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=True, do_plot=True)
