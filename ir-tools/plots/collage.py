@@ -10,8 +10,6 @@ from astropy.io import fits
 from matplotlib.axes import Axes
 from tqdm import tqdm
 
-# from .tools import unwrap_phases
-
 
 
 def sort(fits_files: List[Path], by: str) -> List[Path]:
@@ -223,6 +221,7 @@ def plot_vis(ax: Axes, hdul) -> Axes:
 
 
 def plot_vis2(ax: Axes, hdul) -> Axes:
+    """Plots the squared visibility."""
     data = hdul["oi_vis2"].data
     x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
     plot_data(ax, x, data["vis2data"], data["vis2err"], data["flag"])
@@ -233,6 +232,7 @@ def plot_vis2(ax: Axes, hdul) -> Axes:
 
 
 def plot_visphi(ax: Axes, hdul) -> Axes:
+    """Plots the differential phases."""
     data = hdul["oi_vis"].data
     x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
     plot_data(ax, x, data["visphi"], data["visphierr"], data["flag"])
@@ -242,6 +242,7 @@ def plot_visphi(ax: Axes, hdul) -> Axes:
 
 
 def plot_t3(ax: Axes, hdul) -> Axes:
+    """Plots the closure phases."""
     data = hdul["oi_t3"].data
     x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
     plot_data(ax, x, data["t3phi"], data["t3phierr"], data["flag"])
