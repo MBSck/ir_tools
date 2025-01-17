@@ -6,8 +6,10 @@ from typing import Callable, Dict, List
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
+from astropy.table import Table
 from scipy.interpolate import interp1d
 from scipy.stats import circmean
+from tqdm import tqdm
 
 
 def sampled_interpolation(
@@ -66,6 +68,31 @@ def sampled_interpolation(
     return downsampled_values
 
 
+def replace_columns(hdu: fits.BinTableHDU, names: List[str], data: List[np.ndarray]) -> fits.BinTableHDU:
+    """This replaces the columns by names with the data.
+
+    Parameters
+    ----------
+    hdu : astropy.io.fits.BinTableHDU
+    names : list of str
+    data : list of numpy.ndarray
+
+    Returns
+    -------
+    astropy.io.fits.BinTableHDU
+    """
+    table = Table(hdu.data)
+    for name, value in zip(names, data):
+        table.replace_column(name.upper(), value)
+
+    new_hdu = fits.BinTableHDU(table)
+    for key, value in hdu.header.items():
+        if key.upper() not in new_hdu.header:
+            new_hdu.header[key] = value
+
+    return new_hdu
+
+
 def downsample(
     save_dir : Path,
     fits_to_downsample: Path,
@@ -107,7 +134,7 @@ def downsample(
     """
     save_dir.mkdir(exist_ok=True, parents=True)
     downsampled_fits = save_dir / f"{fits_to_downsample.stem}_DOWNSAMP.fits"
-    shutil.copy(fits_to_sample_from, downsampled_fits)
+    shutil.copy(fits_to_downsample, downsampled_fits)
 
     keys = []
     for card in cards:
@@ -126,13 +153,13 @@ def downsample(
 
     with fits.open(fits_to_sample_from) as hdul:
         wavelengths = hdul["oi_wavelength"].data["eff_wave"]
+        new_card_flags = [hdul[card].data["flag"] for card in cards]
 
     with fits.open(fits_to_downsample, "readonly") as hdul, fits.open(
-        downsampled_fits, "update"
-    ) as hdul_new:
+        downsampled_fits, "update") as hdul_new:
         grid = hdul["oi_wavelength"].data["eff_wave"]
 
-        for index, (card, key) in enumerate(zip(cards, keys)):
+        for index, (card, key, new_flags) in enumerate(zip(cards, keys, new_card_flags)):
             values = hdul[card].data[key[0]]
             errs = hdul[card].data[key[1]]
             phases = True if "phi" in key[0] else False
@@ -147,7 +174,7 @@ def downsample(
                 values = [np.ma.masked_array(value, mask=np.zeros_like(value).astype(bool)) for value in values]
 
             interp_values, interp_errs = [], []
-            for value, err, new_flag in zip(values, errs, hdul_new[card].data["flag"]):
+            for value, err, new_flag in zip(values, errs, new_flags):
                 interp_value = sampling_function(
                     wavelengths, grid, value.flatten(),
                     False, phases, **sampling_kwargs
@@ -200,22 +227,23 @@ def downsample(
                     axarr[index, 2].set_ylim(ylim)
 
             interp_values, interp_errs = np.array(interp_values), np.array(interp_errs)
-            hdul_new[card].data[key[0]] = interp_values
-            hdul_new[card].data[key[1]] = interp_errs
+            hdul_new[card] = replace_columns(hdul[card], key + ["flag"], [interp_values, interp_errs, new_flags])
 
         hdul_new.flush()
 
         if do_plot:
-            plt.savefig(save_dir / f"{fits_to_downsample.stem}_downsampled.png", format="png", dpi=300)
+            plot_dir = save_dir / "plots"
+            plot_dir.mkdir(parents=True, exist_ok=True)
+            plt.savefig(plot_dir / f"{fits_to_downsample.stem}_downsampled.png", format="png", dpi=300)
             plt.close()
 
 
 if __name__ == "__main__":
-    fits_dir = Path().home() / "Data" / "fitting_data" / "hd142527"
+    fits_dir = Path().home() / "Data" / "fitting" / "hd142527"
     # low_res_fits = list(fits_dir.glob("*2022-03-23*_N_*"))[0]
     # fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
     # downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
     low_res_fits = fits_dir / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
     fits_files = list(fits_dir.glob("*2023-08-12*"))
-    for fits_file in fits_files:
+    for fits_file in tqdm(fits_files, desc="Downsampling files..."):
         downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=True, do_plot=True)
