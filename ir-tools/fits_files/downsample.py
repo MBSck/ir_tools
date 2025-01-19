@@ -246,9 +246,9 @@ def downsample(
 
 if __name__ == "__main__":
     fits_dir = Path().home() / "Data" / "fitting" / "hd142527"
-    # low_res_fits = list(fits_dir.glob("*2022-03-23*_N_*"))[0]
-    # fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
-    # downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
+    low_res_fits = list(fits_dir.glob("*2022-03-23*_N_*"))[0]
+    fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
+    downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
     low_res_fits = fits_dir / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
     fits_files = list((fits_dir / "to_downsample").glob("*fits"))
     for fits_file in tqdm(fits_files, desc="Downsampling files..."):
