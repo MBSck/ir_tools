@@ -5,20 +5,29 @@ from typing import List, Dict, Tuple
 import astropy.units as u
 import numpy as np
 import yaml
+from astropy.table import Table
 from astropy.io import fits
 from tqdm import tqdm
 
 
-def flag_gravity(fits_file: Path) -> None:
-    """Flags gravity files.
+def flag_gravity_tracker(fits_file: Path, save_dir: Path) -> None:
+    """Flags a GRAVITY file to remove the first tracker (index=20) wavelength."""
+    flagged_fits = save_dir / fits_file.name
+    shutil.copy(fits_file, flagged_fits)
+    with fits.open(flagged_fits, "update") as hdul:
+        for key in ["oi_flux", "oi_vis", "oi_vis2", "oi_t3"]:
+            if key in hdul:
+                if "FLAG" in hdul[key, 20].columns.names:
+                    hdul[key, 20].data["flag"][:, 0] = True
+                else:
+                    sub_key = "flux" if "FLUX" in hdul[key, 20].columns.names else "fluxdata"
+                    flag = np.zeros_like(hdul[key, 20].data[sub_key]).astype(bool)
+                    flag[:, 0] = True
+                    table = Table(hdul[key, 20].data)
+                    table["FLAG"] = flag
+                    hdul[key, 20] = fits.BinTableHDU(table)
 
-    Notes
-    -----
-    Flags the first index for the GRAVITY data, which usually has detector issues.
-    Also adds a flag column to the "oi_flux" if there is none.
-    """
-    with fits.open(fits_file, "update") as hdul:
-        ...
+        hdul.flush()
 
 
 def flag_wavelength_range(hdu: fits.BinTableHDU, wavelengths: List[float],
@@ -92,16 +101,19 @@ if __name__ == "__main__":
     path = Path().home() / "Data" / "fitting" / "hd142527"
     save_dir = path / "flagged"
 
+    for fits_file in tqdm(list(path.glob("GRAV*")), desc="Flagging GRAVITY..."):
+        flag_gravity_tracker(fits_file, save_dir)
+
     with open(save_dir / "flagging.yaml", "r") as f:
         data = yaml.safe_load(f)
 
-    for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging files..."):
+    for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging MATISSE..."):
         flag_oifits((path / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
 
     with open(save_dir / "flagging_downsampled.yaml", "r") as f:
         data = yaml.safe_load(f)
 
-    for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging files..."):
+    for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging MATISSE downsampled..."):
         flag_oifits((path / "downsampled" / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
 
 
