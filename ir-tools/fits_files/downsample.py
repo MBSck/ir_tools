@@ -85,7 +85,7 @@ def replace_columns(hdu: fits.BinTableHDU, names: List[str], data: List[np.ndarr
     for name, value in zip(names, data):
         table.replace_column(name.upper(), value)
 
-    new_hdu = fits.BinTableHDU(table)
+    new_hdu = fits.BinTableHDU(data=table, name=hdu.name)
     for key, value in hdu.header.items():
         if key.upper() not in new_hdu.header:
             new_hdu.header[key] = value

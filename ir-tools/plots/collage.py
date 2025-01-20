@@ -262,7 +262,7 @@ def plot_collage(fits_file: Path, plots: List[str] | str = "all", cols: int = 3,
 
     index = 20 if "GRAV" in fits_file.stem else None
     with fits.open(fits_file) as hdul:
-        x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
+        x = (hdul["oi_wavelength", index].data["eff_wave"] * u.m).to(u.um)
         for ax, plot in zip(axarr.flatten(), plots):
             ax = getattr(module, f"plot_{plot}")(ax, hdul, x, index)
 

@@ -25,7 +25,13 @@ def flag_gravity_tracker(fits_file: Path, save_dir: Path) -> None:
                     flag[:, 0] = True
                     table = Table(hdul[key, 20].data)
                     table["FLAG"] = flag
-                    hdul[key, 20] = fits.BinTableHDU(table)
+
+                    new_hdu = fits.BinTableHDU(data=table, name=hdul[key, 20].name)
+                    for label, value in hdul[key, 20].header.items():
+                        if label.upper() not in new_hdu.header:
+                            new_hdu.header[label] = value
+
+                    hdul[key, 20] = new_hdu
 
         hdul.flush()
 
