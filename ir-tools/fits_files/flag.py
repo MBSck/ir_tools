@@ -14,14 +14,10 @@ def add_flags(hdul: fits.BinTableHDU, index: int | None = None) -> fits.BinTable
     """Adds missing flag columns to files."""
     for key in ["oi_flux", "oi_vis", "oi_vis2", "oi_t3"]:
         if key in hdul:
-            if key == "oi_flux":
-                sub_key = "flux" if "FLUX" in hdul[key, index].columns.names else "fluxdata"
-            elif key == "oi_vis":
-                sub_key = "visamp"
-            elif key == "oi_vis2":
-                sub_key = "vis2data"
-            else:
-                sub_key = "t3phi"
+            sub_key = "flux" if "FLUX" in hdul[key, index].columns.names else "fluxdata"
+            sub_key = "visamp" if key == "oi_vis" else sub_key
+            sub_key = "vis2data" if key == "oi_vis2" else sub_key
+            sub_key = "t3phi" if key == "oi_t3" else sub_key
 
             flag = np.zeros_like(hdul[key, index].data[sub_key]).astype(bool)
             flag[:, 0] = True

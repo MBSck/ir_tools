@@ -51,7 +51,7 @@ def sampled_interpolation(
     if phases:
         mean_func = partial(circmean, low=-180, high=180)
     else:
-        mean_func = np.mean
+        mean_func = np.ma.mean
 
     downsampled_values = np.zeros_like(new_grid)
     window = np.diff(oversampled_wavelengths)[0]
@@ -61,7 +61,7 @@ def sampled_interpolation(
             & (oversampled_wavelengths <= (wl + window))
         )
         if errors:
-            downsampled_values[index] = np.sqrt(np.sum(new_values[indices]**2)) / new_values[indices].size
+            downsampled_values[index] = np.ma.sqrt(np.ma.sum(new_values[indices]**2)) / new_values[indices].size
         else:
             downsampled_values[index] = mean_func(new_values[indices])
 
@@ -246,10 +246,10 @@ def downsample(
 
 if __name__ == "__main__":
     fits_dir = Path().home() / "Data" / "fitting" / "hd142527"
-    low_res_fits = list(fits_dir.glob("*2022-03-23*_N_*"))[0]
+    low_res_fits = list((fits_dir / "non_flagged").glob("*2022-03-23*_N_*"))[0]
     fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
     downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
-    low_res_fits = fits_dir / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
+    low_res_fits = fits_dir / "non_flagged" / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
     fits_files = list((fits_dir / "to_downsample").glob("*fits"))
     for fits_file in tqdm(fits_files, desc="Downsampling files..."):
         downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=True, do_plot=True)

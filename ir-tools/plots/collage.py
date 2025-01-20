@@ -277,6 +277,8 @@ def plot_collage(fits_file: Path, plots: List[str] | str = "all", cols: int = 3,
 
 
 if __name__ == "__main__":
-    path = Path().home() / "Data" / "fitting" / "hd142527" / "flagged"
+    path = Path().home() / "Data" / "fitting" / "hd142527"
+    save_dir = path / "plots"
+    save_dir.mkdir(parents=True, exist_ok=True)
     for fits_file in tqdm(list(path.glob("*.fits")), desc="Plotting files..."):
-        plot_collage(fits_file, ["flux", "t3", "vis2", "vis"], cols=4, save_dir=path / "plots")
+        plot_collage(fits_file, ["flux", "t3", "vis2", "vis"], cols=4, save_dir=save_dir)
