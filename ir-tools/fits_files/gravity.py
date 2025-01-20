@@ -93,6 +93,7 @@ def calibrate_gravity_flux(target: Path, calibrator: Path, flux_file: Path,
         hdul["oi_flux", 20].columns[5].unit = "Jy"
         hdul.flush()
 
+# TODO: Add the flags for the flux
 
 def make_vis_gravity_files(directory: Path) -> None:
     """Makes a set of gravity files where the vis is set to be the vis2

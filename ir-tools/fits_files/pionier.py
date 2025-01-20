@@ -30,6 +30,7 @@ def delete_add_ins(file: Path) -> None:
             del hdul["oi_flux"]
 
 
+# TODO: Add the flags for the flux
 def calculate_vis(file: Path, flux_file: Path,
                   index: Optional[int] = None, **kwargs) -> None:
     """Calculates the correlated fluxes from the

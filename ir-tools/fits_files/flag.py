@@ -10,9 +10,37 @@ from astropy.io import fits
 from tqdm import tqdm
 
 
+def add_flags(hdul: fits.BinTableHDU, index: int | None = None) -> fits.BinTableHDU:
+    """Adds missing flag columns to files."""
+    for key in ["oi_flux", "oi_vis", "oi_vis2", "oi_t3"]:
+        if key in hdul:
+            if key == "oi_flux":
+                sub_key = "flux" if "FLUX" in hdul[key, index].columns.names else "fluxdata"
+            elif key == "oi_vis":
+                sub_key = "visamp"
+            elif key == "oi_vis2":
+                sub_key = "vis2data"
+            else:
+                sub_key = "t3phi"
+
+            flag = np.zeros_like(hdul[key, index].data[sub_key]).astype(bool)
+            flag[:, 0] = True
+            table = Table(hdul[key, index].data)
+            table["FLAG"] = flag
+
+            new_hdu = fits.BinTableHDU(data=table, name=hdul[key, index].name)
+            for label, value in hdul[key, index].header.items():
+                if label.upper() not in new_hdu.header:
+                    new_hdu.header[label] = value
+
+            hdul[key, index] = new_hdu
+
+    return hdul
+
+
 def flag_gravity_tracker(fits_file: Path, save_dir: Path) -> None:
     """Flags a GRAVITY file to remove the first tracker (index=20) wavelength."""
-    flagged_fits = save_dir / fits_file.name
+    flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
     shutil.copy(fits_file, flagged_fits)
     with fits.open(flagged_fits, "update") as hdul:
         for key in ["oi_flux", "oi_vis", "oi_vis2", "oi_t3"]:
@@ -20,18 +48,7 @@ def flag_gravity_tracker(fits_file: Path, save_dir: Path) -> None:
                 if "FLAG" in hdul[key, 20].columns.names:
                     hdul[key, 20].data["flag"][:, 0] = True
                 else:
-                    sub_key = "flux" if "FLUX" in hdul[key, 20].columns.names else "fluxdata"
-                    flag = np.zeros_like(hdul[key, 20].data[sub_key]).astype(bool)
-                    flag[:, 0] = True
-                    table = Table(hdul[key, 20].data)
-                    table["FLAG"] = flag
-
-                    new_hdu = fits.BinTableHDU(data=table, name=hdul[key, 20].name)
-                    for label, value in hdul[key, 20].header.items():
-                        if label.upper() not in new_hdu.header:
-                            new_hdu.header[label] = value
-
-                    hdul[key, 20] = new_hdu
+                    hdul = add_flags(hdul, 20)
 
         hdul.flush()
 
@@ -84,7 +101,7 @@ def flag_oifits(fits_file: Path, flagging_rules: Dict, save_dir: Path) -> None:
     wavelenght_range : list of float
         A wavelength range to be flagged.
     """
-    flagged_fits = save_dir / fits_file.name
+    flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
     shutil.copy(fits_file, flagged_fits)
     with fits.open(flagged_fits, mode="update") as hdul:
         wavelengths = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um).value
@@ -104,8 +121,15 @@ def flag_oifits(fits_file: Path, flagging_rules: Dict, save_dir: Path) -> None:
 
 
 if __name__ == "__main__":
-    path = Path().home() / "Data" / "fitting" / "hd142527"
-    save_dir = path / "flagged"
+    path = Path().home() / "Data" / "fitting" / "hd142527" / "non_flagged"
+    save_dir = path.parent
+
+    for fits_file in tqdm(list(path.glob("PION*")), desc="Flagging PIONIER..."):
+        flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
+        shutil.copy(fits_file, flagged_fits)
+        with fits.open(flagged_fits, "update") as hdul:
+            hdul = add_flags(hdul)
+            hdul.flush()
 
     for fits_file in tqdm(list(path.glob("GRAV*")), desc="Flagging GRAVITY..."):
         flag_gravity_tracker(fits_file, save_dir)
@@ -120,6 +144,6 @@ if __name__ == "__main__":
         data = yaml.safe_load(f)
 
     for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging MATISSE downsampled..."):
-        flag_oifits((path / "downsampled" / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
+        flag_oifits((path.parent / "downsampled" / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
 
 
