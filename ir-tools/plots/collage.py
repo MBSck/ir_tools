@@ -199,31 +199,28 @@ def plot_data(ax: Axes, x: np.ndarray, y: np.ndarray,
     return ax
 
 
-def plot_flux(ax: Axes, hdul) -> Axes:
+def plot_flux(ax: Axes, hdul, x: np.ndarray, index: int) -> Axes:
     """Plots the flux."""
-    card = hdul["oi_flux"]
+    card = hdul["oi_flux", index]
     key = "fluxdata" if "FLUXDATA" in card.columns.names else "flux"
-    x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
     ax = plot_data(ax, x, card.data[key], card.data["fluxerr"], card.data["flag"])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$F_{\nu}$ $\left(\mathrm{Jy}\right)$")
     return ax
 
 
-def plot_vis(ax: Axes, hdul) -> Axes:
+def plot_vis(ax: Axes, hdul, x: np.ndarray, index: int) -> Axes:
     """Plots the visibility or the correlated flux."""
-    data = hdul["oi_vis"].data
-    x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
+    data = hdul["oi_vis", index].data
     plot_data(ax, x, data["visamp"], data["visamperr"], data["flag"])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$F_{\nu,\,\mathrm{corr}}$ $\left(\mathrm{Jy}\right)$")
     return ax
 
 
-def plot_vis2(ax: Axes, hdul) -> Axes:
+def plot_vis2(ax: Axes, hdul, x: np.ndarray, index: int) -> Axes:
     """Plots the squared visibility."""
-    data = hdul["oi_vis2"].data
-    x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
+    data = hdul["oi_vis2", index].data
     plot_data(ax, x, data["vis2data"], data["vis2err"], data["flag"])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$V^{2}$ (a.u.)")
@@ -231,20 +228,18 @@ def plot_vis2(ax: Axes, hdul) -> Axes:
     return ax
 
 
-def plot_visphi(ax: Axes, hdul) -> Axes:
+def plot_visphi(ax: Axes, hdul, x: np.ndarray, index: int) -> Axes:
     """Plots the differential phases."""
-    data = hdul["oi_vis"].data
-    x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
+    data = hdul["oi_vis", index].data
     plot_data(ax, x, data["visphi"], data["visphierr"], data["flag"])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$\phi_{\mathrm{diff}}$ $\left(^\circ\right)$")
     return ax
 
 
-def plot_t3(ax: Axes, hdul) -> Axes:
+def plot_t3(ax: Axes, hdul, x: np.ndarray, index: int) -> Axes:
     """Plots the closure phases."""
-    data = hdul["oi_t3"].data
-    x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
+    data = hdul["oi_t3", index].data
     plot_data(ax, x, data["t3phi"], data["t3phierr"], data["flag"])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$\phi_{\mathrm{cp}}$ $\left(^\circ\right)$")
@@ -264,9 +259,12 @@ def plot_collage(fits_file: Path, plots: List[str] | str = "all", cols: int = 3,
     figsize = (cols * cell_width, rows * cell_width)
     _, axarr = plt.subplots(rows, cols, figsize=figsize,
                             sharex=True, constrained_layout=True)
+
+    index = 20 if "GRAV" in fits_file.stem else None
     with fits.open(fits_file) as hdul:
+        x = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um)
         for ax, plot in zip(axarr.flatten(), plots):
-            ax = getattr(module, f"plot_{plot}")(ax, hdul)
+            ax = getattr(module, f"plot_{plot}")(ax, hdul, x, index)
 
     [ax.remove() for index, ax in enumerate(axarr.flatten()) if index >= len(plots)]
 
