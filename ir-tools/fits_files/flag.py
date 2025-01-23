@@ -49,9 +49,29 @@ def flag_gravity_tracker(fits_file: Path, save_dir: Path) -> None:
         hdul.flush()
 
 
+def flag_baseline(hdu: fits.BinTableHDU, wavelengths: List[float],
+                  flag_ranges: List[Tuple[float, float]], reflag: bool = False) -> None:
+    """Flags data in the given HDU inside the specified wavelength ranges for certain baselines. 
+
+    Parameters
+    ----------
+    hdul : astropy.io.fits.BinTableHDU
+    wavelenght : list of float
+    flag_ranges : list of tuple of float
+    reflag : bool, optional
+    """
+    if flag_ranges:
+        masks = [(wavelengths >= lower) & (wavelengths <= upper) for lower, upper in flag_ranges]
+        previous_flag = np.zeros_like(hdu.data["flag"]).astype(bool) if reflag else hdu.data["flag"]
+        flag = ~np.logical_or.reduce(masks) | previous_flag
+    else:
+        flag = np.ones_like(hdu.data["flag"]).astype(bool)
+
+    hdu.data["flag"] = flag
+
 def flag_wavelength_range(hdu: fits.BinTableHDU, wavelengths: List[float],
                           flag_ranges: List[Tuple[float, float]], reflag: bool = False) -> None:
-    """Flags data in the given HDU outside specific wavelength ranges.
+    """Flags data in the given HDU outside the specified wavelength ranges.
 
     Parameters
     ----------
@@ -70,7 +90,7 @@ def flag_wavelength_range(hdu: fits.BinTableHDU, wavelengths: List[float],
     hdu.data["flag"] = flag
 
 
-def flag_baselines(hdu: fits.BinTableHDU,
+def remove_baselines(hdu: fits.BinTableHDU,
                    array_to_sta: Dict[int, str],
                    baselines_to_flag: List[str]) -> None:
     """Flags specific baselines in the given HDU.
@@ -108,38 +128,46 @@ def flag_oifits(fits_file: Path, flagging_rules: Dict, save_dir: Path) -> None:
                         reflag = rules["reflag"] if "reflag" in rules else False
                         flag_wavelength_range(hdu, wavelengths, rules["keep_wavelengths"], reflag)
 
-                    if "baselines" in rules:
+                    if "remove_baselines" in rules:
                         array = hdul["oi_array"].data
                         array_to_sta = dict(zip(map(int, array["sta_index"]), array["sta_name"]))
-                        flag_baselines(hdu, array_to_sta, rules["baselines"])
+                        remove_baselines(hdu, array_to_sta, rules["remove_baselines"])
 
         hdul.flush()
 
 
 if __name__ == "__main__":
-    path = Path().home() / "Data" / "fitting" / "hd142527" / "non_flagged"
-    save_dir = path.parent
+    # path = Path().home() / "Data" / "fitting" / "hd142527" / "non_flagged"
+    # save_dir = path.parent
+    #
+    # for fits_file in tqdm(list(path.glob("PION*")), desc="Flagging PIONIER..."):
+    #     flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
+    #     shutil.copy(fits_file, flagged_fits)
+    #     with fits.open(flagged_fits, "update") as hdul:
+    #         hdul = add_flags(hdul)
+    #         hdul.flush()
+    #
+    # for fits_file in tqdm(list(path.glob("GRAV*")), desc="Flagging GRAVITY..."):
+    #     flag_gravity_tracker(fits_file, save_dir)
+    #
+    # with open(save_dir / "flagging.yaml", "r") as f:
+    #     data = yaml.safe_load(f)
+    #
+    # for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging MATISSE..."):
+    #     flag_oifits((path / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
+    #
+    # with open(save_dir / "flagging_downsampled.yaml", "r") as f:
+    #     data = yaml.safe_load(f)
+    #
+    # for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging MATISSE downsampled..."):
+    #     flag_oifits((path.parent / "downsampled" / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
 
-    for fits_file in tqdm(list(path.glob("PION*")), desc="Flagging PIONIER..."):
-        flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
-        shutil.copy(fits_file, flagged_fits)
-        with fits.open(flagged_fits, "update") as hdul:
-            hdul = add_flags(hdul)
-            hdul.flush()
-
-    for fits_file in tqdm(list(path.glob("GRAV*")), desc="Flagging GRAVITY..."):
-        flag_gravity_tracker(fits_file, save_dir)
+    path = Path().home() / "Data" / "supervision" / "amira" / "M8E-IR"
+    save_dir = path.parent / "M8E-IR_flagged"
 
     with open(save_dir / "flagging.yaml", "r") as f:
         data = yaml.safe_load(f)
 
-    for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging MATISSE..."):
-        flag_oifits((path / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
-
-    with open(save_dir / "flagging_downsampled.yaml", "r") as f:
-        data = yaml.safe_load(f)
-
     for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging MATISSE downsampled..."):
-        flag_oifits((path.parent / "downsampled" / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
-
+        flag_oifits((path.parent / "M8E-IR" / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
 
