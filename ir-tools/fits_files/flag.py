@@ -49,25 +49,34 @@ def flag_gravity_tracker(fits_file: Path, save_dir: Path) -> None:
         hdul.flush()
 
 
-def flag_baseline(hdu: fits.BinTableHDU, wavelengths: List[float],
-                  flag_ranges: List[Tuple[float, float]], reflag: bool = False) -> None:
+def flag_baseline(hdu: fits.BinTableHDU,
+                  wavelengths: List[float],
+                  baselines_with_flag_range: Dict[str, List[float]],
+                  ) -> None:
     """Flags data in the given HDU inside the specified wavelength ranges for certain baselines. 
 
     Parameters
     ----------
     hdul : astropy.io.fits.BinTableHDU
-    wavelenght : list of float
-    flag_ranges : list of tuple of float
-    reflag : bool, optional
+    wavelengths : list of float
+    baselines_with_flag_range : dict of str and list of float
     """
-    if flag_ranges:
-        masks = [(wavelengths >= lower) & (wavelengths <= upper) for lower, upper in flag_ranges]
-        previous_flag = np.zeros_like(hdu.data["flag"]).astype(bool) if reflag else hdu.data["flag"]
-        flag = ~np.logical_or.reduce(masks) | previous_flag
-    else:
-        flag = np.ones_like(hdu.data["flag"]).astype(bool)
+    sta_names = np.vectorize(lambda x: str(array_to_sta.get(x)))(hdu.data["sta_index"])
+    breakpoint()
+    for index, baseline in enumerate(["-".join(arr) for arr in sta_names]):
+        ...
+        # if baseline in baselines_to_flag:
+            # hdu.data[index]["flag"] = np.ones_like(hdu.data[index]["flag"])
+
+    # if flag_ranges:
+    #     masks = [(wavelengths >= lower) & (wavelengths <= upper) for lower, upper in flag_ranges]
+    #     previous_flag = np.zeros_like(hdu.data["flag"]).astype(bool) if reflag else hdu.data["flag"]
+    #     flag = ~np.logical_or.reduce(masks) | previous_flag
+    # else:
+    #     flag = np.ones_like(hdu.data["flag"]).astype(bool)
 
     hdu.data["flag"] = flag
+
 
 def flag_wavelength_range(hdu: fits.BinTableHDU, wavelengths: List[float],
                           flag_ranges: List[Tuple[float, float]], reflag: bool = False) -> None:
@@ -91,9 +100,9 @@ def flag_wavelength_range(hdu: fits.BinTableHDU, wavelengths: List[float],
 
 
 def remove_baselines(hdu: fits.BinTableHDU,
-                   array_to_sta: Dict[int, str],
-                   baselines_to_flag: List[str]) -> None:
-    """Flags specific baselines in the given HDU.
+                     array_to_sta: Dict[int, str],
+                     baselines_to_flag: List[str]) -> None:
+    """Flags all values of the specified baselines.
 
     Parameters
     ----------
