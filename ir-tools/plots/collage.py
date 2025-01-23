@@ -224,7 +224,7 @@ def plot_vis2(ax: Axes, hdul, x: np.ndarray, index: int) -> Axes:
     plot_data(ax, x, data["vis2data"], data["vis2err"], data["flag"])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$V^{2}$ (a.u.)")
-    ax.set_ylim([0, 1])
+    ax.set_ylim((0, None) if ax.get_ylim()[1] < 1 else (0, 1))
     return ax
 
 
@@ -277,8 +277,15 @@ def plot_collage(fits_file: Path, plots: List[str] | str = "all", cols: int = 3,
 
 
 if __name__ == "__main__":
-    path = Path().home() / "Data" / "fitting" / "hd142527"
-    save_dir = path / "plots"
-    save_dir.mkdir(parents=True, exist_ok=True)
+    # path = Path().home() / "Data" / "fitting" / "hd142527"
+    # save_dir = path / "plots"
+    # save_dir.mkdir(parents=True, exist_ok=True)
+    # for fits_file in tqdm(list(path.glob("*.fits")), desc="Plotting files..."):
+    #     plot_collage(fits_file, ["flux", "t3", "vis2", "vis"], cols=4, save_dir=save_dir)
+
+    path = Path().home() / "Data" / "supervision" / "amira" / "M8E-IR_flagged"
+    plot_dir = path / "plots"
+    plot_dir.mkdir(parents=True, exist_ok=True)
     for fits_file in tqdm(list(path.glob("*.fits")), desc="Plotting files..."):
-        plot_collage(fits_file, ["flux", "t3", "vis2", "vis"], cols=4, save_dir=save_dir)
+        plot_collage(fits_file, ["flux", "t3", "vis2", "vis"], cols=4, save_dir=plot_dir)
+
