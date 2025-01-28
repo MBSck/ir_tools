@@ -63,9 +63,9 @@ if __name__ == "__main__":
     bands = ["hband", "kband", "lband", "mband", "nband"]
     wavelengths = np.concatenate([wavelengths[band] for band in bands])
     fit_data = ["flux", "vis", "t3"]
-    # fit_data = ["flux", "vis"]
     data = set_data(
-        fits_files, wavelengths=wavelengths, fit_data=fit_data, average=True
+        fits_files, wavelengths=wavelengths, fit_data=fit_data,
+        average=True,
     )
     uncertainties = np.load(path / "uncertainties.npy")
     with open(path / "components.pkl", "rb") as f:
