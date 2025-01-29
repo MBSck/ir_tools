@@ -13,12 +13,9 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS
 from ppdmod.plot import (
-    plot_chains,
-    plot_component_mosaic,
     plot_components,
     plot_corner,
     plot_fit,
-    plot_interferometric_observables,
     plot_intermediate_products,
     plot_overview,
 )
@@ -70,7 +67,6 @@ if __name__ == "__main__":
     with open(path / "components.pkl", "rb") as f:
         components = pickle.load(f)
 
-    # breakpoint()
     theta = get_theta(components)
     component_labels = [component.label for component in components]
 
@@ -150,11 +146,6 @@ if __name__ == "__main__":
         zoom=zoom,
         savefig=plot_dir / "image_nband.png",
     )
-    # plot_component_mosaic(
-    #     components, dim, 0.1, norm=0.2, savefig=plot_dir / "models.pdf", zoom=8
-    # )
-    # plot_intermediate_products(
-    #     dim, wavelengths, components, component_labels, save_dir=plot_dir
-    # )
-    # plot_interferometric_observables([1, 13.5]*u.um, components,
-    #                                  component_labels, save_dir=fit_plot_dir)
+    plot_intermediate_products(
+        dim, wavelengths, components, component_labels, save_dir=plot_dir
+    )
