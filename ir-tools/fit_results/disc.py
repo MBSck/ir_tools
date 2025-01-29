@@ -40,7 +40,7 @@ def ptform():
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
     path = data_dir / "results" / "disc" / "2025-01-28"
-    path /= "no_reduced_t3"
+    path /= "better_constraints_lnf"
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
     assets_dir.mkdir(exist_ok=True, parents=True)
@@ -65,19 +65,19 @@ if __name__ == "__main__":
     fit_data = ["flux", "vis", "t3"]
     data = set_data(
         fits_files, wavelengths=wavelengths, fit_data=fit_data,
-        average=True,
     )
     uncertainties = np.load(path / "uncertainties.npy")
     with open(path / "components.pkl", "rb") as f:
         components = pickle.load(f)
 
+    # breakpoint()
     theta = get_theta(components)
     component_labels = [component.label for component in components]
 
     # TODO: Check why the chi_sq is different here from the value that it should be?
     rchi_sqs = compute_interferometric_chi_sq(
         components,
-        ndim=np.array(theta).size,
+        ndim=theta.size,
         method="linear",
         reduced=True,
     )
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         dim,
         0.1,
         3.5,
-        norm=0.1,
+        norm=0.3,
         zoom=zoom,
         savefig=plot_dir / "image_lband.png",
     )
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         dim,
         0.1,
         10.5,
-        norm=0.1,
+        norm=0.3,
         zoom=zoom,
         savefig=plot_dir / "image_nband.png",
     )
