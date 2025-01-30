@@ -2,14 +2,17 @@ import pickle
 from pathlib import Path
 
 import astropy.units as u
+import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
+    get_best_fit,
     get_labels,
     get_theta,
     get_units,
+    set_components_from_theta,
 )
 from ppdmod.options import OPTIONS
 from ppdmod.plot import (
@@ -36,8 +39,11 @@ def ptform():
 # TODO: Fix the chi square here to get correct fit values
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    path = data_dir / "results" / "disc" / "2025-01-28"
-    path /= "better_constraints_lnf"
+    path = data_dir / "results" / "disc" / "2025-01-29"
+    path /= "free_inc"
+
+    path = Path("/Users/scheuck/Documents/Code/ppdmod/results/disc_fit/2025-01-30/no_average")
+
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
     assets_dir.mkdir(exist_ok=True, parents=True)
@@ -56,6 +62,8 @@ if __name__ == "__main__":
     OPTIONS.data.binning.nband = nband_binning_windows * u.um
     fits_files = list((fits_dir).glob("*fits"))
 
+    OPTIONS.fit.fitter = "emcee"
+
     dim = 1024
     bands = ["hband", "kband", "lband", "mband", "nband"]
     wavelengths = np.concatenate([wavelengths[band] for band in bands])
@@ -63,12 +71,23 @@ if __name__ == "__main__":
     data = set_data(
         fits_files, wavelengths=wavelengths, fit_data=fit_data,
     )
+    if OPTIONS.fit.fitter == "emcee":
+        sampler = emcee.backends.HDFBackend(path / "sampler.h5")
+    else:
+        sampler = DynamicNestedSampler.restore(path / "sampler.save")
+
+    theta = np.load(path / "theta.npy")
     uncertainties = np.load(path / "uncertainties.npy")
     with open(path / "components.pkl", "rb") as f:
         components = pickle.load(f)
 
-    theta = get_theta(components)
+    labels, units = get_labels(components), get_units(components)
+    OPTIONS.fit.condition = "sequential_radii"
+    OPTIONS.fit.condition_indices = list(
+        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
+    )
     component_labels = [component.label for component in components]
+    get_best_fit(sampler)
 
     # TODO: Check why the chi_sq is different here from the value that it should be?
     rchi_sqs = compute_interferometric_chi_sq(
@@ -80,12 +99,10 @@ if __name__ == "__main__":
     print(f"Total reduced chi sq: {rchi_sqs[0]:.2f}")
     print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
 
-    labels = get_labels(components)
-    units = get_units(components)
-    sampler = DynamicNestedSampler.restore(path / "sampler.save")
 
     plot_format = "pdf"
-    plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"))
+    # TODO: Fix this
+    # plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"))
     plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
     plot_overview(
         bands=["nband"],
