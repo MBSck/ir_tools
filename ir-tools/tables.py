@@ -158,12 +158,10 @@ def best_fit_parameters(
     """Make a (.pdf) file containing a table of the fit parameters."""
     labels, units = format_labels(labels, units, split=True)
     if uncertainties is not None:
-        if fit_method == "dynesty":
-            values = values[:, np.newaxis]
-        else:
-            breakpoint()
+        if fit_method == "emcee":
+            uncertainties = uncertainties.T
 
-        uncertainties = np.round(np.abs(uncertainties - values), 2)
+        uncertainties = np.round(np.abs(uncertainties - values[:, np.newaxis]), 2)
 
     values = [
         f"{value:.2e}" if np.abs(value) < 1e-2 else f"{value:.2f}" for value in values
