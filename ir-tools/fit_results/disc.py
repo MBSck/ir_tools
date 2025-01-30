@@ -39,10 +39,8 @@ def ptform():
 # TODO: Fix the chi square here to get correct fit values
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    path = data_dir / "results" / "disc" / "2025-01-29"
-    path /= "free_inc"
-
-    path = Path("/Users/scheuck/Documents/Code/ppdmod/results/disc_fit/2025-01-30/no_average")
+    path = data_dir / "results" / "disc" / "2025-01-30"
+    path /= "both_asym_free_inc"
 
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -102,7 +100,7 @@ if __name__ == "__main__":
 
     plot_format = "pdf"
     # TODO: Fix this
-    # plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"))
+    # plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"), discard=1000)
     plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
     plot_overview(
         bands=["nband"],
@@ -111,22 +109,6 @@ if __name__ == "__main__":
     plot_overview(
         bands=["hband", "kband", "lband", "mband"],
         savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
-    )
-    best_fit_parameters(
-        labels,
-        units,
-        theta,
-        uncertainties,
-        save_as_csv=True,
-        savefig=assets_dir / "disc.csv",
-    )
-    best_fit_parameters(
-        labels,
-        units,
-        theta,
-        uncertainties,
-        save_as_csv=False,
-        savefig=assets_dir / "disc",
     )
     plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
     plot_fit(
@@ -165,4 +147,22 @@ if __name__ == "__main__":
     )
     plot_intermediate_products(
         dim, wavelengths, components, component_labels, save_dir=plot_dir
+    )
+    best_fit_parameters(
+        labels,
+        units,
+        theta,
+        uncertainties,
+        save_as_csv=True,
+        savefig=assets_dir / "disc.csv",
+        fit_method=OPTIONS.fit.fitter,
+    )
+    best_fit_parameters(
+        labels,
+        units,
+        theta,
+        uncertainties,
+        save_as_csv=False,
+        savefig=assets_dir / "disc",
+        fit_method=OPTIONS.fit.fitter,
     )
