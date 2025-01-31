@@ -8,11 +8,8 @@ from dynesty import DynamicNestedSampler
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
-    get_best_fit,
     get_labels,
-    get_theta,
     get_units,
-    set_components_from_theta,
 )
 from ppdmod.options import OPTIONS
 from ppdmod.plot import (
@@ -40,7 +37,7 @@ def ptform():
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
     path = data_dir / "results" / "disc" / "2025-01-30"
-    path /= "both_asym_free_inc"
+    path /= "both_asym"
 
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -60,7 +57,7 @@ if __name__ == "__main__":
     OPTIONS.data.binning.nband = nband_binning_windows * u.um
     fits_files = list((fits_dir).glob("*fits"))
 
-    OPTIONS.fit.fitter = "emcee"
+    OPTIONS.fit.fitter = "dynesty"
 
     dim = 1024
     bands = ["hband", "kband", "lband", "mband", "nband"]
@@ -77,7 +74,7 @@ if __name__ == "__main__":
     theta = np.load(path / "theta.npy")
     uncertainties = np.load(path / "uncertainties.npy")
     with open(path / "components.pkl", "rb") as f:
-        components = pickle.load(f)
+        components = OPTIONS.model.components = pickle.load(f)
 
     labels, units = get_labels(components), get_units(components)
     OPTIONS.fit.condition = "sequential_radii"
@@ -85,7 +82,6 @@ if __name__ == "__main__":
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
     component_labels = [component.label for component in components]
-    get_best_fit(sampler)
 
     # TODO: Check why the chi_sq is different here from the value that it should be?
     rchi_sqs = compute_interferometric_chi_sq(
@@ -99,8 +95,7 @@ if __name__ == "__main__":
 
 
     plot_format = "pdf"
-    # TODO: Fix this
-    # plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"), discard=1000)
+    plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"), discard=1000)
     plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
     plot_overview(
         bands=["nband"],
