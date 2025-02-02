@@ -20,7 +20,7 @@ from ppdmod.plot import (
     plot_overview,
 )
 from ppdmod.utils import (
-    create_adaptive_bins,
+    # create_adaptive_bins,
     windowed_linspace,
 )
 
@@ -37,27 +37,28 @@ def ptform():
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
     path = data_dir / "results" / "disc" / "2025-01-30"
-    path /= "both_asym"
+    path /= "different_asym"
 
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
     assets_dir.mkdir(exist_ok=True, parents=True)
 
     fits_dir = data_dir / "fitting" / "hd142527"
-    nband_wavelengths, nband_binning_windows = create_adaptive_bins(
-        [8, 13], [9.2, 11.9], 0.2, 0.65
-    )
+    # nband_wavelengths, nband_binning_windows = create_adaptive_bins(
+    #     [8.6, 12.3], [9.2, 11.9], 0.2, 0.65
+    # )
     wavelengths = {
         "hband": [1.7] * u.um,
         "kband": [2.15] * u.um,
-        "lband": windowed_linspace(3.1, 3.4, OPTIONS.data.binning.lband.value) * u.um,
-        "mband": windowed_linspace(4.7, 4.9, OPTIONS.data.binning.mband.value) * u.um,
-        "nband": nband_wavelengths * u.um,
+        "lband": windowed_linspace(3.1, 3.8, OPTIONS.data.binning.lband.value) * u.um,
+        "mband": windowed_linspace(4.65, 4.9, OPTIONS.data.binning.mband.value) * u.um,
+        "nband": windowed_linspace(8.25, 12.75, OPTIONS.data.binning.nband.value) * u.um,
     }
-    OPTIONS.data.binning.nband = nband_binning_windows * u.um
+    # OPTIONS.data.binning.nband = nband_binning_windows * u.um
     fits_files = list((fits_dir).glob("*fits"))
 
     OPTIONS.fit.fitter = "dynesty"
+    OPTIONS.fit.condition = "sequential_radii"
 
     dim = 1024
     bands = ["hband", "kband", "lband", "mband", "nband"]
@@ -77,7 +78,6 @@ if __name__ == "__main__":
         components = OPTIONS.model.components = pickle.load(f)
 
     labels, units = get_labels(components), get_units(components)
-    OPTIONS.fit.condition = "sequential_radii"
     OPTIONS.fit.condition_indices = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
@@ -86,13 +86,12 @@ if __name__ == "__main__":
     # TODO: Check why the chi_sq is different here from the value that it should be?
     rchi_sqs = compute_interferometric_chi_sq(
         components,
-        ndim=theta.size,
+        theta.size,
         method="linear",
         reduced=True,
     )
     print(f"Total reduced chi sq: {rchi_sqs[0]:.2f}")
     print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
-
 
     plot_format = "pdf"
     plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"), discard=1000)
@@ -128,9 +127,9 @@ if __name__ == "__main__":
         savefig=plot_dir / "image_lband.png",
     )
 
-    OPTIONS.data.binning.nband = (
-        np.interp(10.5, nband_wavelengths, nband_binning_windows) * u.um
-    )
+    # OPTIONS.data.binning.nband = (
+    #     np.interp(10.5, nband_wavelengths, nband_binning_windows) * u.um
+    # )
     plot_components(
         components,
         dim,
