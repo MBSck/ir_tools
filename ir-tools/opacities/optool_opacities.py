@@ -5,6 +5,26 @@ import optool
 import matplotlib.pyplot as plt
 from ppdmod.utils import load_data, qval_to_opacity
 
+STR_TO_LNK = {
+
+    "oliSC_x_551K"
+}
+
+# TODO: Make lnk data dir
+def do_optool_calculation():
+    gsize = 0.1 #um
+    gs = '%f'%gsize
+    dhs_opt = ' -dhs 0.8'
+    wl_grid = '-l 0.05 50 10000'
+
+    px2 = optool.particle("~/bin/optool "+dhs_opt+" "+wl_opt+" -a "+gs+)
+    py2 = optool.particle("~/bin/optool "+dhs_opt+" "+wl_opt+" -a "+gs+" /Users/jvarga/Dokumentumok/MATISSE/pro/optool/lnk_data/ad/oliSC_y_551K.lnk")
+    pz2 = optool.particle("~/bin/optool "+dhs_opt+" "+wl_opt+" -a "+gs+" /Users/jvarga/Dokumentumok/MATISSE/pro/optool/lnk_data/ad/oliSC_z_551K.lnk")
+    pmix2 = (px2+py2+pz2)/3.
+
+    plt.plot(pmix2.lam,pmix2.kabs[0,:],label='forsterite DHS Zeidler monocrystalline')
+
+
 
 if __name__ == "__main__":
     wl = np.load("grf_wl_grid.npy")
