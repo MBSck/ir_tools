@@ -165,8 +165,24 @@ if __name__ == "__main__":
     #     savefig=assets_dir / "disc",
     #     fit_method=OPTIONS.fit.fitter,
     # )
-    #
-    # plot_baselines(wavelengths, components, "hband", plot_dir, nplots=20)
-    # plot_baselines(wavelengths, components, "kband", plot_dir, nplots=20)
-    # plot_baselines(wavelengths, components, "lband", plot_dir, nplots=20)
-    plot_baselines(wavelengths, components, "nband", plot_dir, nplots=12)
+
+    number = True
+    for nplots, band in zip([20, 20, 20, 12], ["hband", "kband", "lband", "nband"]):
+        plot_baselines(
+            wavelengths,
+            components,
+            band,
+            plot_dir,
+            data_type="vis",
+            nplots=nplots,
+            number=number,
+        )
+        plot_baselines(
+            wavelengths,
+            components,
+            band,
+            plot_dir,
+            data_type="t3",
+            nplots=nplots,
+            number=False,
+        )
