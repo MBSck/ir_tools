@@ -1,0 +1,23 @@
+[forsterite]
+first = "ol-c-mg100"
+second = "Suto2006"
+additional = ""
+
+[enstatite]
+first = "pyr-c-mg96"
+second = "Jaeger1998"
+additional = ""
+
+[pyroxene]
+first = "pyr-mg100"
+second = ""
+additional = ""
+
+[silica]
+additional = ""
+
+
+[olivines]
+first = "ol-mg100-Jaeger2003"
+second = ""
+additional = ""
