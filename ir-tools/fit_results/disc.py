@@ -13,7 +13,7 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS
 from ppdmod.plot import (
-    plot_interferometric_observables,
+    plot_baselines,
     plot_components,
     plot_corner,
     plot_fit,
@@ -78,6 +78,10 @@ if __name__ == "__main__":
     with open(path / "components.pkl", "rb") as f:
         components = OPTIONS.model.components = pickle.load(f)
 
+    components[-1].rout.value = 2.1
+    components[-1].rin.value = 1.4
+    components[-1].sigma0.value = 1e-3
+
     labels, units = get_labels(components), get_units(components)
     OPTIONS.fit.condition_indices = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
@@ -95,71 +99,74 @@ if __name__ == "__main__":
     print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
 
     plot_format = "pdf"
-    plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"), discard=1000)
-    plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
-    plot_overview(
-        bands=["nband"],
-        savefig=(plot_dir / f"overview_nband.{plot_format}"),
-    )
-    plot_overview(
-        bands=["hband", "kband", "lband", "mband"],
-        savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
-    )
+    # plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"), discard=1000)
+    # plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
+    # plot_overview(
+    #     bands=["nband"],
+    #     savefig=(plot_dir / f"overview_nband.{plot_format}"),
+    # )
+    # plot_overview(
+    #     bands=["hband", "kband", "lband", "mband"],
+    #     savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
+    # )
     plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
     plot_fit(
         components=components,
         bands=["nband"],
         savefig=(plot_dir / f"disc_nband.{plot_format}"),
     )
-    plot_fit(
-        components=components,
-        bands=["hband", "kband", "lband", "mband"],
-        ylims={"t3": [-15, 15]},
-        savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
-    )
-    zoom = 5
-    plot_components(
-        components,
-        dim,
-        0.1,
-        3.5,
-        norm=0.3,
-        zoom=zoom,
-        savefig=plot_dir / "image_lband.png",
-    )
-
-    OPTIONS.data.binning.nband = (
-        np.interp(10.5, nband_wavelengths, nband_binning_windows) * u.um
-    )
-    plot_components(
-        components,
-        dim,
-        0.1,
-        10.5,
-        norm=0.3,
-        zoom=zoom,
-        savefig=plot_dir / "image_nband.png",
-    )
-    # plot_intermediate_products(
-    #     dim, wavelengths, components, component_labels, save_dir=plot_dir
+    # plot_fit(
+    #     components=components,
+    #     bands=["hband", "kband", "lband", "mband"],
+    #     ylims={"t3": [-15, 15]},
+    #     savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
     # )
-    best_fit_parameters(
-        labels,
-        units,
-        theta,
-        uncertainties,
-        save_as_csv=True,
-        savefig=assets_dir / "disc.csv",
-        fit_method=OPTIONS.fit.fitter,
-    )
-    best_fit_parameters(
-        labels,
-        units,
-        theta,
-        uncertainties,
-        save_as_csv=False,
-        savefig=assets_dir / "disc",
-        fit_method=OPTIONS.fit.fitter,
-    )
-
-    plot_interferometric_observables(wavelengths, components, plot_dir)
+    # zoom = 5
+    # plot_components(
+    #     components,
+    #     dim,
+    #     0.1,
+    #     3.5,
+    #     norm=0.3,
+    #     zoom=zoom,
+    #     savefig=plot_dir / "image_lband.png",
+    # )
+    #
+    # OPTIONS.data.binning.nband = (
+    #     np.interp(10.5, nband_wavelengths, nband_binning_windows) * u.um
+    # )
+    # plot_components(
+    #     components,
+    #     dim,
+    #     0.1,
+    #     10.5,
+    #     norm=0.3,
+    #     zoom=zoom,
+    #     savefig=plot_dir / "image_nband.png",
+    # )
+    # # plot_intermediate_products(
+    # #     dim, wavelengths, components, component_labels, save_dir=plot_dir
+    # # )
+    # best_fit_parameters(
+    #     labels,
+    #     units,
+    #     theta,
+    #     uncertainties,
+    #     save_as_csv=True,
+    #     savefig=assets_dir / "disc.csv",
+    #     fit_method=OPTIONS.fit.fitter,
+    # )
+    # best_fit_parameters(
+    #     labels,
+    #     units,
+    #     theta,
+    #     uncertainties,
+    #     save_as_csv=False,
+    #     savefig=assets_dir / "disc",
+    #     fit_method=OPTIONS.fit.fitter,
+    # )
+    #
+    # plot_baselines(wavelengths, components, "hband", plot_dir, nplots=20)
+    # plot_baselines(wavelengths, components, "kband", plot_dir, nplots=20)
+    # plot_baselines(wavelengths, components, "lband", plot_dir, nplots=20)
+    plot_baselines(wavelengths, components, "nband", plot_dir, nplots=12)
