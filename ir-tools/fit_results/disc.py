@@ -13,6 +13,7 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS
 from ppdmod.plot import (
+    plot_interferometric_observables,
     plot_components,
     plot_corner,
     plot_fit,
@@ -127,9 +128,9 @@ if __name__ == "__main__":
         savefig=plot_dir / "image_lband.png",
     )
 
-    # OPTIONS.data.binning.nband = (
-    #     np.interp(10.5, nband_wavelengths, nband_binning_windows) * u.um
-    # )
+    OPTIONS.data.binning.nband = (
+        np.interp(10.5, nband_wavelengths, nband_binning_windows) * u.um
+    )
     plot_components(
         components,
         dim,
@@ -139,9 +140,9 @@ if __name__ == "__main__":
         zoom=zoom,
         savefig=plot_dir / "image_nband.png",
     )
-    plot_intermediate_products(
-        dim, wavelengths, components, component_labels, save_dir=plot_dir
-    )
+    # plot_intermediate_products(
+    #     dim, wavelengths, components, component_labels, save_dir=plot_dir
+    # )
     best_fit_parameters(
         labels,
         units,
@@ -160,3 +161,5 @@ if __name__ == "__main__":
         savefig=assets_dir / "disc",
         fit_method=OPTIONS.fit.fitter,
     )
+
+    plot_interferometric_observables(wavelengths, components, plot_dir)
