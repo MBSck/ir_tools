@@ -16,6 +16,7 @@
 *.csv
 *.npy
 *.tex
+*.lock
 old/
 __pycache__/
 *egg-info*
