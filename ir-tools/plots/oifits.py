@@ -11,7 +11,6 @@ from astropy.io import fits
 from matplotlib import colormaps as mcm
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap
-from tqdm import tqdm
 
 
 @dataclass
@@ -25,22 +24,30 @@ class Data:
     t3: List[fits.BinTableHDU] = field(default_factory=list)
 
 
-def read_data(fits_files: List[Path] | Path) -> Data:
+def read_data(fits_files: List[Path] | Path | fits.HDUList) -> Data:
     """Reads the data from the fits files."""
     data = Data()
-    for fits_file in fits_files if isinstance(fits_files, list) else [fits_files]:
+    try:
+        fits_files = fits_files if isinstance(fits_files, list) else [fits_files]
+        hduls = [fits.open(fits_file) for fits_file in fits_files]
+    except TypeError:
+        hduls = fits_files
+
+    for hdul in hduls:
         data.nentry += 1
-        index = 20 if "GRAV" in fits_file.stem else None
-        with fits.open(fits_file) as hdul:
-            for key in ["header", "wl", "array", "vis", "vis2", "t3"]:
-                if key == "header":
-                    data.header.append(hdul[0].header.copy())
-                elif key == "wl":
-                    data.wl.append(
-                        (hdul["oi_wavelength", index].data["eff_wave"].copy() * u.m).to(u.um)
-                    )
-                else:
-                    getattr(data, key).append(hdul[f"oi_{key}", index].copy())
+        data.header.append(hdul[0].header.copy())
+        index = 20 if "grav" in data.header[-1]["INSTRUME"].lower() else None
+        data.wl.append(
+            (hdul["oi_wavelength", index].data["eff_wave"].copy() * u.m).to(u.um)
+        )
+        for key in ["array", "vis", "vis2", "t3"]:
+            if key == "array":
+                card = hdul[f"oi_{key}"]
+            else:
+                card = hdul[f"oi_{key}", index]
+            getattr(data, key).append(card.copy())
+
+    [hdul.close() for hdul in hduls]
     return data
 
 
@@ -53,8 +60,7 @@ def get_unit(self, header: str, sub_header: str) -> str:
 def convert_style_to_colormap(style: str) -> ListedColormap:
     """Converts a style into a colormap."""
     plt.style.use(style)
-    colormap = ListedColormap(
-            plt.rcParams["axes.prop_cycle"].by_key()["color"])
+    colormap = ListedColormap(plt.rcParams["axes.prop_cycle"].by_key()["color"])
     plt.style.use("default")
     return colormap
 
@@ -91,25 +97,43 @@ def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
             ucoords.extend(file_ucoords)
             vcoords.extend(file_vcoords)
 
-            # Plot all points for this file with the same color
-            ax.plot(file_ucoords, file_vcoords, "x", markersize=6, markeredgewidth=2, color=color)
-            ax.plot(-file_ucoords, -file_vcoords, "x", markersize=6, markeredgewidth=2, color=color)
-
-            # Add a legend handle for this file
-            handles.append(mlines.Line2D(
-                [], [], color=color, marker="X", linestyle="None",
-                label=header["date-obs"].split("T")[0]
-            ))
+            ax.plot(
+                file_ucoords,
+                file_vcoords,
+                "x",
+                markersize=6,
+                markeredgewidth=2,
+                color=color,
+            )
+            ax.plot(
+                -file_ucoords,
+                -file_vcoords,
+                "x",
+                markersize=6,
+                markeredgewidth=2,
+                color=color,
+            )
+            handles.append(
+                mlines.Line2D(
+                    [],
+                    [],
+                    color=color,
+                    marker="X",
+                    linestyle="None",
+                    label=header["date-obs"].split("T")[0],
+                )
+            )
 
         ucoords, vcoords = np.array(ucoords), np.array(vcoords)
 
     sorted_idx = np.argsort(np.hypot(ucoords, vcoords))
-    coord_to_count = dict(zip(ucoords[sorted_idx], np.arange(1, sorted_idx.size + 1)))
-    for ucoord, vcoord in zip(ucoords, vcoords):
+    for idx, (ucoord, vcoord) in enumerate(
+        zip(ucoords[sorted_idx], vcoords[sorted_idx]), start=1
+    ):
         ax.text(
             ucoord + 3.5,
             vcoord + 3.5,
-            coord_to_count[ucoord],
+            idx,
             fontsize="small",
             color="0",
             alpha=0.8,
