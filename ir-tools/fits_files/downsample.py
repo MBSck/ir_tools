@@ -157,7 +157,7 @@ def downsample(
 
     axarr = []
     if do_plot:
-        axarr = plt.subplots(len(cards), 3, figsize=(10, 12))[1]
+        axarr = plt.subplots(len(cards) + 1, 3, figsize=(10, 12))[1]
 
     with fits.open(fits_to_sample_from) as old_hdul:
         wavelengths = old_hdul["oi_wavelength"].data["eff_wave"]
@@ -177,10 +177,13 @@ def downsample(
         grid = hdul["oi_wavelength"].data["eff_wave"]
         hdul_new["oi_wavelength"] = wl_hdu
 
-        for index, (card, key, new_flags) in enumerate(
-            zip(cards, keys, new_card_flags)
-        ):
+        index = 0
+        for card, key, new_flags in zip(cards, keys, new_card_flags):
+            value_names, err_names = [], []
+            key_values, key_errors = [], []
             for k in key:
+                value_names.append(k[0])
+                err_names.append(k[1])
                 values, errs = hdul[card].data[k[0]], hdul[card].data[k[1]]
                 phases = True if "phi" in k[0] else False
 
@@ -279,16 +282,25 @@ def downsample(
                         )
                         axarr[index, 2].set_ylim(ylim)
 
-                interp_values, interp_errs = np.array(interp_values), np.array(
-                    interp_errs
-                )
-                hdul_new[card] = replace_columns(
-                    hdul[card], k + ["flag"], [interp_values, interp_errs, new_flags]
-                )
+                key_values.append(np.array(interp_values))
+                key_errors.append(np.array(interp_values))
+                index += 1
+
+            columns = value_names + err_names + ["flag"]
+            values = key_values + key_errors + [new_flags]
+            hdul_new[card] = replace_columns(hdul[card], columns, values)
 
         hdul_new.flush()
 
         if do_plot:
+            axarr[0, 0].set_ylabel(r"$F_{\nu}$ (Jy)")
+            axarr[1, 0].set_ylabel(r"$V^2$ (a.u.)")
+            axarr[2, 0].set_ylabel("Amplitude")
+            axarr[3, 0].set_ylabel(r"$\phi_{\mathrm{diff.}}$ ($^\circ$)")
+            axarr[4, 0].set_ylabel(r"$\phi_{\mathrm{cl.}}$ ($^\circ$)")
+            for index in range(3):
+                axarr[-1, index].set_xlabel(r"$\lambda$ (m)")
+
             plot_dir = save_dir / "plots"
             plot_dir.mkdir(parents=True, exist_ok=True)
             plt.savefig(
