@@ -13,9 +13,12 @@ from tqdm import tqdm
 
 
 def sampled_interpolation(
-    new_grid: np.ndarray, grid: np.ndarray, values: np.ndarray,
-    errors: bool = False, phases: bool = False,
-    **kwargs
+    new_grid: np.ndarray,
+    grid: np.ndarray,
+    values: np.ndarray,
+    errors: bool = False,
+    phases: bool = False,
+    **kwargs,
 ) -> np.ndarray:
     """Interpolates the values to the wavelength grid.
 
@@ -44,9 +47,9 @@ def sampled_interpolation(
     oversampled_wavelengths = np.linspace(
         new_grid.min(), new_grid.max(), new_grid.size * sampling_factor
     )
-    new_values = interp1d(
-        grid, values, fill_value="extrapolate"
-    )(oversampled_wavelengths)
+    new_values = interp1d(grid, values, fill_value="extrapolate")(
+        oversampled_wavelengths
+    )
 
     if phases:
         mean_func = partial(circmean, low=-180, high=180)
@@ -61,14 +64,19 @@ def sampled_interpolation(
             & (oversampled_wavelengths <= (wl + window))
         )
         if errors:
-            downsampled_values[index] = np.ma.sqrt(np.ma.sum(new_values[indices]**2)) / new_values[indices].size
+            downsampled_values[index] = (
+                np.ma.sqrt(np.ma.sum(new_values[indices] ** 2))
+                / new_values[indices].size
+            )
         else:
             downsampled_values[index] = mean_func(new_values[indices])
 
     return downsampled_values
 
 
-def replace_columns(hdu: fits.BinTableHDU, names: List[str], data: List[np.ndarray]) -> fits.BinTableHDU:
+def replace_columns(
+    hdu: fits.BinTableHDU, names: List[str], data: List[np.ndarray]
+) -> fits.BinTableHDU:
     """This replaces the columns by names with the data.
 
     Parameters
@@ -94,9 +102,9 @@ def replace_columns(hdu: fits.BinTableHDU, names: List[str], data: List[np.ndarr
 
 
 def downsample(
-    save_dir : Path,
+    save_dir: Path,
     fits_to_downsample: Path,
-    fits_to_sample_from: np.ndarray,
+    fits_to_sample_from: Path,
     cards: List[str] = ["oi_flux", "oi_vis2", "oi_vis", "oi_t3"],
     sampling_function: Callable = sampled_interpolation,
     sampling_kwargs: Dict | None = {},
@@ -139,13 +147,13 @@ def downsample(
     keys = []
     for card in cards:
         if "flux" in card:
-            keys.append(["fluxdata", "fluxerr"])
+            keys.append([["fluxdata", "fluxerr"]])
         if card == "oi_vis2":
-            keys.append(["vis2data", "vis2err"])
+            keys.append([["vis2data", "vis2err"]])
         if card == "oi_vis":
-            keys.append(["visamp", "visamperr"])
+            keys.append([["visamp", "visamperr"], ["visphi", "visphierr"]])
         if card == "oi_t3":
-            keys.append(["t3phi", "t3phierr"])
+            keys.append([["t3phi", "t3phierr"]])
 
     axarr = []
     if do_plot:
@@ -155,101 +163,161 @@ def downsample(
         wavelengths = old_hdul["oi_wavelength"].data["eff_wave"]
         bands = old_hdul["oi_wavelength"].data["eff_band"]
         new_card_flags = [old_hdul[card].data["flag"] for card in cards]
-        wl_hdu = fits.BinTableHDU(Table([wavelengths, bands], names=("EFF_WAVE", "EFF_BAND")))
+        wl_hdu = fits.BinTableHDU(
+            Table([wavelengths, bands], names=("EFF_WAVE", "EFF_BAND"))
+        )
         for key, value in old_hdul["oi_wavelength"].header.items():
             if key not in wl_hdu.header:
                 wl_hdu.header[key] = value
 
-    with fits.open(fits_to_downsample, "readonly") as hdul, fits.open(
-        downsampled_fits, "update") as hdul_new:
+    with (
+        fits.open(fits_to_downsample, "readonly") as hdul,
+        fits.open(downsampled_fits, "update") as hdul_new,
+    ):
         grid = hdul["oi_wavelength"].data["eff_wave"]
         hdul_new["oi_wavelength"] = wl_hdu
 
-        for index, (card, key, new_flags) in enumerate(zip(cards, keys, new_card_flags)):
-            values = hdul[card].data[key[0]]
-            errs = hdul[card].data[key[1]]
-            phases = True if "phi" in key[0] else False
+        for index, (card, key, new_flags) in enumerate(
+            zip(cards, keys, new_card_flags)
+        ):
+            for k in key:
+                values, errs = hdul[card].data[k[0]], hdul[card].data[k[1]]
+                phases = True if "phi" in k[0] else False
 
-            if values.shape[0] == 1:
-                values, errs = [values], [errs]
+                if values.shape[0] == 1:
+                    values, errs = [values], [errs]
 
-            if use_flags:
-                flags = hdul[card].data["flag"]
-                values = [np.ma.masked_array(value, mask=flag) for value, flag in zip(values, flags)]
-            else:
-                values = [np.ma.masked_array(value, mask=np.zeros_like(value).astype(bool)) for value in values]
+                if use_flags:
+                    flags = hdul[card].data["flag"]
+                    values = [
+                        np.ma.masked_array(value, mask=flag)
+                        for value, flag in zip(values, flags)
+                    ]
+                else:
+                    values = [
+                        np.ma.masked_array(
+                            value, mask=np.zeros_like(value).astype(bool)
+                        )
+                        for value in values
+                    ]
 
-            interp_values, interp_errs = [], []
-            for value, err, new_flag in zip(values, errs, new_flags):
-                interp_value = sampling_function(
-                    wavelengths, grid, value.flatten(),
-                    False, phases, **sampling_kwargs
-                )
-                interp_err = sampling_function(
-                    wavelengths, grid, err.flatten(), 
-                    True, phases, **sampling_kwargs,
-                )
-                interp_values.append(interp_value)
-                interp_errs.append(interp_err)
-
-                if do_plot:
-                    if use_flags:
-                        interp_value = np.ma.masked_array(interp_value, mask=new_flag)
-                        interp_err = np.ma.masked_array(interp_err, mask=new_flag)
-
-                    if card in ["oi_flux", "oi_vis"]:
-                        ylim = (0, np.percentile(value.data, 80))
-                    elif card in ["oi_vis2"]:
-                        ylim = (0, 1)
-                    else:
-                        ylim = (np.percentile(value.data, 10), np.percentile(value.data, 90))
-
-                    slices = slice(2, -2)
-                    axarr[0, 0].set_title("Original vs Downsampled")
-                    axarr[index, 0].plot(grid[slices], value.flatten()[slices], label="Original")
-                    axarr[index, 0].plot(wavelengths[slices], interp_value[slices], label="Downsampled")
-                    axarr[index, 0].set_ylim(ylim)
-
-                    axarr[0, 1].set_title("Original")
-                    line = axarr[index, 1].plot(grid[slices], value.flatten()[slices], label="Original")
-                    axarr[index, 1].fill_between(
-                        grid[slices],
-                        (value.flatten() - err.flatten())[slices],
-                        (value.flatten() + err.flatten())[slices],
-                        color=line[0].get_color(),
-                        alpha=0.5,
+                interp_values, interp_errs = [], []
+                for value, err, new_flag in zip(values, errs, new_flags):
+                    interp_value = sampling_function(
+                        wavelengths,
+                        grid,
+                        value.flatten(),
+                        False,
+                        phases,
+                        **sampling_kwargs,
                     )
-                    axarr[index, 1].set_ylim(ylim)
-
-                    axarr[0, 2].set_title("Downsampled")
-                    line = axarr[index, 2].plot(wavelengths[slices], interp_value[slices], label="Downsampled")
-                    axarr[index, 2].fill_between(
-                        wavelengths[slices],
-                        (interp_value - interp_err)[slices],
-                        (interp_value + interp_err)[slices],
-                        color=line[0].get_color(),
-                        alpha=0.5,
+                    interp_err = sampling_function(
+                        wavelengths,
+                        grid,
+                        err.flatten(),
+                        True,
+                        phases,
+                        **sampling_kwargs,
                     )
-                    axarr[index, 2].set_ylim(ylim)
+                    interp_values.append(interp_value)
+                    interp_errs.append(interp_err)
 
-            interp_values, interp_errs = np.array(interp_values), np.array(interp_errs)
-            hdul_new[card] = replace_columns(hdul[card], key + ["flag"], [interp_values, interp_errs, new_flags])
+                    if do_plot:
+                        if use_flags:
+                            interp_value = np.ma.masked_array(
+                                interp_value, mask=new_flag
+                            )
+                            interp_err = np.ma.masked_array(interp_err, mask=new_flag)
+
+                        if card in ["oi_flux", "oi_vis"]:
+                            ylim = (0, np.percentile(value.data, 80))
+                        elif card in ["oi_vis2"]:
+                            ylim = (0, 1)
+                        else:
+                            ylim = (
+                                np.percentile(value.data, 10),
+                                np.percentile(value.data, 90),
+                            )
+
+                        slices = slice(2, -2)
+                        axarr[0, 0].set_title("Original vs Downsampled")
+                        axarr[index, 0].plot(
+                            grid[slices], value.flatten()[slices], label="Original"
+                        )
+                        axarr[index, 0].plot(
+                            wavelengths[slices],
+                            interp_value[slices],
+                            label="Downsampled",
+                        )
+                        axarr[index, 0].set_ylim(ylim)
+
+                        axarr[0, 1].set_title("Original")
+                        line = axarr[index, 1].plot(
+                            grid[slices], value.flatten()[slices], label="Original"
+                        )
+                        axarr[index, 1].fill_between(
+                            grid[slices],
+                            (value.flatten() - err.flatten())[slices],
+                            (value.flatten() + err.flatten())[slices],
+                            color=line[0].get_color(),
+                            alpha=0.5,
+                        )
+                        axarr[index, 1].set_ylim(ylim)
+
+                        axarr[0, 2].set_title("Downsampled")
+                        line = axarr[index, 2].plot(
+                            wavelengths[slices],
+                            interp_value[slices],
+                            label="Downsampled",
+                        )
+                        axarr[index, 2].fill_between(
+                            wavelengths[slices],
+                            (interp_value - interp_err)[slices],
+                            (interp_value + interp_err)[slices],
+                            color=line[0].get_color(),
+                            alpha=0.5,
+                        )
+                        axarr[index, 2].set_ylim(ylim)
+
+                interp_values, interp_errs = np.array(interp_values), np.array(
+                    interp_errs
+                )
+                hdul_new[card] = replace_columns(
+                    hdul[card], k + ["flag"], [interp_values, interp_errs, new_flags]
+                )
 
         hdul_new.flush()
 
         if do_plot:
             plot_dir = save_dir / "plots"
             plot_dir.mkdir(parents=True, exist_ok=True)
-            plt.savefig(plot_dir / f"{fits_to_downsample.stem}_downsampled.png", format="png", dpi=300)
+            plt.savefig(
+                plot_dir / f"{fits_to_downsample.stem}_downsampled.png",
+                format="png",
+                dpi=300,
+            )
             plt.close()
 
 
 if __name__ == "__main__":
     fits_dir = Path().home() / "Data" / "fitting" / "hd142527"
-    low_res_fits = list((fits_dir / "non_flagged").glob("*2022-03-23*_N_*"))[0]
-    fits_file = list((fits_dir / "nband_fit" / "only_high").glob("*.fits"))[0]
-    downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=False, do_plot=True)
-    low_res_fits = fits_dir / "non_flagged" / "HD_142527_2021-03-11T06_47_07_K0G2D0J3_L_TARGET_CHOPPED_FINALCAL_INT.fits"
-    fits_files = list((fits_dir / "to_downsample").glob("*fits"))
+    low_res_fits = list((fits_dir / "non_treated").glob("*2022-03-23*_N_*"))[0]
+    fits_file = list((fits_dir / "non_treated").glob("*2021-03-27*_N_*"))[0]
+    downsample(
+        fits_dir / "treated" / "downsampled",
+        fits_file,
+        low_res_fits,
+        use_flags=False,
+        do_plot=True,
+    )
+
+    low_res_fits = list((fits_dir / "non_treated").glob("*2022-03-23*_L_*"))[0]
+    fits_files = list((fits_dir / "non_treated" / "to_downsample").glob("*fits"))
     for fits_file in tqdm(fits_files, desc="Downsampling files..."):
-        downsample(fits_dir / "downsampled", fits_file, low_res_fits, use_flags=True, do_plot=True)
+        downsample(
+            fits_dir / "treated" / "downsampled",
+            fits_file,
+            low_res_fits,
+            use_flags=True,
+            do_plot=True,
+        )
