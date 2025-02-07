@@ -283,7 +283,7 @@ def downsample(
                         axarr[index, 2].set_ylim(ylim)
 
                 key_values.append(np.array(interp_values))
-                key_errors.append(np.array(interp_values))
+                key_errors.append(np.array(interp_errs))
                 index += 1
 
             columns = value_names + err_names + ["flag"]
