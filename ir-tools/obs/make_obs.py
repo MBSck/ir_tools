@@ -1,13 +1,9 @@
 from pathlib import Path
 
-from p2obp import OPTIONS, create_obs, create_ob
+from p2obt import create_obs
 
-
-OPTIONS.dit.gra4mat.ats.high = 1.3
 
 if __name__ == "__main__":
-    night_plan_dir = Path("/Users/scheuck/Data/observations/P113")
-    output_dir = Path("/Users/scheuck/Data/observations/obs")
-    # create_obs(night_plan_dir / "obs_plan_err.txt", user_name="MbS", observational_mode="sm")
-    create_ob("HP Cha", "cal", "uts", "st",
-              container_id=3795161, user_name="MbS")
+    data_dir = Path().home() / "Data"
+    night_plan_dir = data_dir / "observations" / "P115"
+    create_obs(night_plan_dir / "image.txt", user_name="MbS")
