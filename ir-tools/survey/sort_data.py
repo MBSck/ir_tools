@@ -4,28 +4,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List
 
-import numpy as np
 import pandas as pd
-from astropy.io import fits
 from tqdm import tqdm
-from uncertainties import unumpy
-
-
-def correct_vis_to_vis2(fits_file: Path) -> None:
-    """The Varga reduction save "OI_VIS" in "OI_VIS2", this corrects it
-    to be "OI_VIS2" to be oimodeler compliant."""
-    with fits.open(fits_file, mode="update") as hdul:
-        for card in hdul:
-            header = card.header
-            if "EXTNAME" not in header:
-                continue
-
-            if header["EXTNAME"] == "OI_VIS2":
-                vis = unumpy.uarray(card.data["VIS2DATA"], np.abs(card.data["VIS2ERR"]))
-                card.data["VIS2DATA"] = unumpy.nominal_values(vis**2)
-                card.data["VIS2ERR"] = unumpy.std_devs(vis**2)
-
-        hdul.flush()
 
 
 def get_source(excel_file: Path, target: str) -> pd.DataFrame:
@@ -45,7 +25,8 @@ def get_sources(
     df = pd.read_excel(excel_file, sheet_name=sheet_name, header=[0, 1])
     lband_selection = df["Selected"]["for L paper"].astype(str)
     df = df.dropna(subset=[("Selected", lband_selection.name)])
-    df = df[~lband_selection.isin(["no", "tbd"])]
+    df = df[~lband_selection.isin(["no", "tbd", "nan"])]
+    df = df[~df.iloc[:, 0].isna()]
 
     if band == "nband":
         nband_selection = df["Selected"]["for LN paper"].astype(str)
@@ -161,7 +142,7 @@ def sort_target(sheet: Path, source: str, source_dir: Path, target_dir: Path) ->
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
     excel_file = data_dir / "survey" / "MATISSE data overview.xlsx"
-    source_dir = data_dir / "reduced_data" / "jozsef_reductions" / "targets5"
+    source_dir = data_dir / "reduced" / "targets6"
     target_dir = data_dir / "survey"
     sources = get_sources(excel_file)
 
