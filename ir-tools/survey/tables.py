@@ -1,4 +1,3 @@
-import re
 from datetime import datetime
 from itertools import permutations
 from pathlib import Path
@@ -40,16 +39,8 @@ ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A0-B5-J2-J6", "AT extended")
 ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "U1-U2-U3-U4", "UTs")
 
 
-def source_table(excel_file: Path) -> None:
-    sources = get_sources(excel_file)
-    breakpoint()
-    # df = pd.concat(
-    #     [get_source(excel_file, source) for source in sorted(get_sources(excel_file))]
-    # )
-    # df.drop(columns=["ID", "Coordinator", "Night", "Who else is working on the data?"], inplace=True)
-    # df.to_excel("source_table.xlsx")
-
-
+# TODO: Make a sorting here for the chopped then non-chopped data, etc.
+# Also reimplement the arrays (but from the header this time).
 def source_info(data_dir: Path, sources: List[str]) -> None:
     keys = [
         "source",
@@ -76,29 +67,29 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
     dfs = []
     sources_sorted = query(sources).sort_values(by="RA")["source"].tolist()
     for source in sources_sorted:
-        source_info = {key: [] for key in keys}
+        info = {key: [] for key in keys}
         for fits_file in list((data_dir / get_dir_name(source)).glob("*.fits")):
             with fits.open(fits_file, "readonly") as hdul:
                 header = hdul[0].header
 
-            source_info["source"].append(source)
+            info["source"].append(source)
             tpl_start = header["HIERARCH ESO TPL START"]
             date = datetime.strptime(tpl_start.split("T")[0], "%Y-%m-%d")
-            source_info["year"].append(date.year)
-            source_info["date"].append(f"{date.strftime('%B')[:3]} {date.day}")
-            source_info["tpl_start"].append(tpl_start)
-            source_info["pipe_version"].append(
+            info["year"].append(date.year)
+            info["date"].append(f"{date.strftime('%B')[:3]} {date.day}")
+            info["tpl_start"].append(tpl_start)
+            info["pipe_version"].append(
                 header["HIERARCH ESO PRO REC1 PIPE ID"].split("/")[1]
             )
             sci_seeing_start = header["HIERARCH ESO ISS AMBI FWHM START"]
             sci_seeing_end = header["HIERARCH ESO ISS AMBI FWHM END"]
-            source_info["sci_seeing_start"].append(sci_seeing_start)
-            source_info["sci_seeing_end"].append(sci_seeing_end)
+            info["sci_seeing_start"].append(sci_seeing_start)
+            info["sci_seeing_end"].append(sci_seeing_end)
 
             sci_tau0_start = np.round(header["HIERARCH ESO ISS AMBI TAU0 START"] * 1e3, 1)
             sci_tau0_end = np.round(header["HIERARCH ESO ISS AMBI TAU0 END"] * 1e3, 1)
-            source_info["sci_tau0_start"].append(sci_tau0_start)
-            source_info["sci_tau0_end"].append(sci_tau0_end)
+            info["sci_tau0_start"].append(sci_tau0_start)
+            info["sci_tau0_end"].append(sci_tau0_end)
 
             cal_name, cal_ra, cal_dec = "", 0, 0
             cal_diam, cal_diam_err, cal_seeing = "", "", ""
@@ -120,22 +111,22 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
             else:
                 cal_name = cal_name.replace("_", " ")
 
-            source_info["cal_name"].append(cal_name)
-            source_info["cal_ra"].append(cal_ra)
-            source_info["cal_dec"].append(cal_dec)
-            source_info["cal_diam"].append(cal_diam)
-            source_info["cal_diam_err"].append(cal_diam_err)
-            source_info["cal_seeing"].append(cal_seeing)
-            source_info["cal_tau0"].append(cal_tau0)
-            source_info["cal_jdsc"].append(cal_jsdc)
+            info["cal_name"].append(cal_name)
+            info["cal_ra"].append(cal_ra)
+            info["cal_dec"].append(cal_dec)
+            info["cal_diam"].append(cal_diam)
+            info["cal_diam_err"].append(cal_diam_err)
+            info["cal_seeing"].append(cal_seeing)
+            info["cal_tau0"].append(cal_tau0)
+            info["cal_jdsc"].append(cal_jsdc)
 
-            config = re.search(r"[A-Z]\d[A-Z]\d[A-Z]\d[A-Z]\d", fits_file.name)
-            config = ARRAY_CONFIGS[config.group()] if config else "other"
-            source_info["array"].append(config)
-            source_info["band"].append(header["HIERARCH ESO DET NAME"].split("-")[1])
-            source_info["chopped"].append("nochop" in fits_file.name.lower())
+            # config = re.search(r"[A-Z]\d[A-Z]\d[A-Z]\d[A-Z]\d", fits_file.name)
+            # config = ARRAY_CONFIGS[config.group()] if config else "other"
+            info["array"].append("")
+            info["band"].append(header["HIERARCH ESO DET NAME"].split("-")[1])
+            info["chopped"].append("nochop" in fits_file.name.lower())
 
-        source_df = pd.DataFrame(source_info)
+        source_df = pd.DataFrame(info)
         source_df["tpl_start"] = pd.to_datetime(source_df["tpl_start"])
         dfs.append(source_df.sort_values(by="tpl_start"))
 
@@ -189,15 +180,6 @@ if __name__ == "__main__":
     excel_file = data_dir / "survey" / "MATISSE data overview.xlsx"
     source_dir = data_dir / "reduced_data" / "jozsef_reductions" / "targets5"
     df = source_info(
-        data_dir / "reduced_data" / "jozsef_reductions" / "targets5",
+        data_dir / "reduced" / "targets6",
         get_sources(excel_file),
     )
-    # source_table(excel_file)
-
-    # survey_result_dir = Path().home() / "Data" / "survey" / "results"
-    # save_dir = survey_result_dir / "model_pt_eg"
-    # sources = np.load(save_dir / "sources.npy")
-    # parameter_labels = np.load(save_dir / "labels.npy")
-    # results = np.load(save_dir / "results.npy")
-    # chi_sqs = np.load(save_dir / "chi_sqs.npy")
-    # survey_results(sources, parameter_labels, results, chi_sqs, save_dir)
