@@ -12,6 +12,8 @@ from matplotlib import colormaps as mcm
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap
 
+from ..utils import get_band
+
 
 @dataclass
 class Data:
@@ -76,6 +78,152 @@ def get_colormap(colormap: str) -> ListedColormap:
 def get_colorlist(colormap: str, ncolors: int | None) -> List[str]:
     """Gets the colormap as a list from the matplotlib colormaps."""
     return [get_colormap(colormap)(i) for i in range(ncolors)]
+
+
+# TODO: Rewrite this function to make it easier to read and change -> Also for the readin of the data
+# maybe move it to the plot section
+# TODO: Make it so that there is always the max amount if the max is reached
+# TODO: Rewrite this with just hduls and not the rest
+def plot_baselines(
+    hduls: List[fits.HDUList],
+    band: str,
+    observable: str = "vis",
+    nplots: int = 12,
+    number: bool = False,
+    save_dir: Path | None = None,
+) -> None:
+    """Plots the observables of the model.
+
+    Parameters
+    ----------
+    hduls : list of fits.HDUList
+        A list containing the read in fits files.
+    band : str
+        The band to plot the data for.
+    observable : str, optional
+        The observable to plot. "vis", "visphi", "t3" and "vis2" are available.
+    nplots : int, optional
+        The number of plots to show.
+    number : bool, optional
+        If the plots should be numbered.
+    save_dir : Path, optional
+        The save directory for the plots.
+    """
+    overplot_model = observable != "visphi"
+    save_dir = Path.cwd() if save_dir is None else save_dir
+    bands = np.array(list(map(get_band, wavelength_range)))
+    if band in ["lband", "mband"]:
+        band_ind = np.where((bands == "lband") | (bands == "mband"))[0]
+    else:
+        band_ind = np.where(bands == band)[0]
+
+    data = getattr(OPTIONS.data, "vis" if observable in ["vis", "visphi"] else observable)
+    baseline_ind = np.where(~np.any(data.value[band_ind].mask, axis=0))[0]
+    if observable in ["vis", "visphi"]:
+        baselines, psi = compute_effective_baselines(data.ucoord, data.vcoord)
+        names = data.baselines
+    else:
+        baselines, psi = compute_effective_baselines(
+            data.u123coord, data.v123coord, longest=True
+        )
+        names = data.triangles
+
+    baselines = baselines[1:][baseline_ind]
+    psi = psi.to(u.deg)[1:][baseline_ind]
+
+    names = [names[i] for i in baseline_ind]
+    wl_data = [data.raw_wavelengths[i] for i in baseline_ind]
+
+    if observable == "visphi":
+        raw_value = [data.raw_visphi[i] for i in baseline_ind]
+        raw_err = [data.raw_visphierr[i] for i in baseline_ind]
+    else:
+        raw_value = [data.raw_value[i] for i in baseline_ind]
+        raw_err = [data.raw_err[i] for i in baseline_ind]
+
+    # TODO: Switch the ranges here
+    wavelength_range = wavelength_range[band_ind]
+    wavelength = np.linspace(wl_data[0][0], wl_data[0][-1], OPTIONS.plot.dim)
+
+    if overplot_model:
+        _, vis_model, t3_model = compute_observables(
+            components, wavelength=wavelength * u.um
+        )
+        model_data = vis_model if observable == "vis" else t3_model
+        model_data = model_data[:, baseline_ind]
+
+    percentiles = np.linspace(0, 100, nplots)
+    percentile_ind = percentile_indices(baselines, percentiles)
+    baselines, psi = baselines[percentile_ind], psi[percentile_ind]
+    wl_data = [wl_data[i] for i in percentile_ind]
+    raw_value = [raw_value[i] for i in percentile_ind]
+    raw_err = [raw_err[i] for i in percentile_ind]
+    names = [names[i] for i in percentile_ind]
+
+    fig, axarr = plt.subplots(
+        *get_best_plot_arrangement(nplots) * 4,
+        figsize=figsize,
+        facecolor=OPTIONS.plot.color.background,
+        sharex=True,
+        constrained_layout=True,
+    )
+    axarr = axarr.flatten()
+    if observable == "vis":
+        y_label = r"$F_{\nu,\,\mathrm{corr.}}$ (Jy)"
+        ylims = [0, None]
+    elif observable == "visphi":
+        y_label = r"$\phi_{\mathrm{diff.}}$ ($^\circ$)"
+        ylims = None
+    elif observable == "t3":
+        y_label = r"$\phi_{\mathrm{cl.}}$ ($^\circ$)"
+        ylims = None
+    else:
+        y_label = "$V^2$ (a.u.)"
+        ylims = [0, 1]
+
+    for index, (baseline, baseline_angle) in enumerate(zip(baselines, psi)):
+        ax = axarr[index]
+        set_axes_color(ax, OPTIONS.plot.color.background)
+        if overplot_model:
+            ax.plot(
+                wavelength,
+                model_data[:, percentile_ind[index]],
+                label="Model",
+            )
+        label = rf"{names[index]}, B={baseline.value:.2f} m, $\phi$={baseline_angle.value:.2f}$^\circ$"
+        line = ax.plot(
+            wl_data[index],
+            raw_value[index],
+            label=label,
+        )
+        ax.fill_between(
+            wl_data[index],
+            raw_value[index] + raw_err[index],
+            raw_value[index] - raw_err[index],
+            color=line[0].get_color(),
+            alpha=0.5,
+        )
+        ax.set_ylim(ylims)
+        if number:
+            ax.text(
+                0.05,
+                0.95,
+                str(index + 1),
+                transform=ax.transAxes,
+                fontsize=14,
+                fontweight="bold",
+                va="top",
+                ha="left",
+            )
+        ax.legend()
+
+    [ax.remove() for index, ax in enumerate(axarr.flatten()) if index >= nplots]
+    fig.subplots_adjust(left=0.2, bottom=0.2)
+    # TODO: Reimplement this
+    # fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
+    # fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
+    plt.savefig(save_dir / f"{observable}_{band}.pdf", format="pdf")
+    plt.close()
 
 
 def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
@@ -265,13 +413,5 @@ if __name__ == "__main__":
     path = Path().home() / "Data" / "fitting" / "hd142527"
     plot_dir = path / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
+    breakpoint()
 
-    fits_files = list(path.glob("*_N_*"))
-    fits_files = [file for file in fits_files if not file.name.startswith("._")]
-    plot(
-        fits_files,
-        # ["flux", "t3", "vis2", "vis"],
-        ["uv"],
-        kind="combined",
-        save_dir=plot_dir / "uts_uv.png",
-    )
