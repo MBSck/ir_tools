@@ -1,11 +1,69 @@
 import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import astropy.units as u
 import numpy as np
 from astropy.io import fits
-from matadrs.utils.plot import Plotter
+
+
+def get_band(
+    name_or_limits: str | List[float] | Tuple[float],
+) -> str | Tuple[float, float]:
+    """Gets either the limits of a band in near or mid-infrared.
+
+    Supported are the H, K, L, M, and N bands.
+
+    Parameters
+    ----------
+    name_or_limits : str or list of list or tuple of float
+        The name of the band or the limits of the band.
+
+    Returns
+    -------
+    str or tuple of float
+        Either the name of the band or the limits of the band.
+    """
+    if isinstance(name_or_limits, str):
+        match name_or_limits:
+            case "hband":
+                return 1.5, 1.8
+            case "kband":
+                return 1.9, 2.5
+            case "lband":
+                return 2.6, 3.99
+            case "mband":
+                return 4.0, 6.0
+            case "nband":
+                return 7.5, 16.0
+            case _:
+                raise ValueError(
+                    "Band not recognised. Supported inputs can be 'hband', 'kband', 'lband',"
+                    "'mband', or 'nband'."
+                )
+    elif isinstance(name_or_limits, (list, tuple, np.ndarray)):
+        match name_or_limits:
+            case (wl_min, wl_max) if 1.5 < wl_min < 1.8 and 1.5 < wl_max < 1.8:
+                return "hband"
+            case (wl_min, wl_max) if 1.9 < wl_min < 2.5 and 1.9 < wl_max < 2.5:
+                return "kband"
+            case (wl_min, wl_max) if 2.6 < wl_min < 4.0 and 2.6 < wl_max < 4.0:
+                return "lband"
+            case (wl_min, wl_max) if 4.0 <= wl_min < 6.0 and 4.0 <= wl_max < 6.0:
+                return "mband"
+            case (wl_min, wl_max) if 7.5 < wl_min < 16.0 and 7.5 < wl_max < 16.0:
+                return "nband"
+            case _:
+                raise ValueError(
+                    "Band not recognised. Supported ranges are between (1.5, 1.8)"
+                    " for 'hband',\n (1.9, 2.5) for 'kband', (2.6, 3.99) for 'lband',"
+                    " (4.0, 6.0) for 'mband', and (7.5, 16.0) for 'nband'."
+                )
+    else:
+        raise ValueError(
+            "Input of wrong type. Needs to be a string or a list or tuple"
+            " or a numpy array of floats."
+        )
 
 
 def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
@@ -104,9 +162,12 @@ def average_total_flux(directory: Optional[Path] = None, **kwargs) -> None:
             hdul["oi_flux"].data["fluxdata"] = avg_flux
             hdul["oi_flux"].data["fluxerr"] = avg_fluxerr
             hdul.flush()
-        plot = Plotter(new_file, save_dir=plot_dir)
-        unwrap = True if "AQUARIUS" in fits_file.name else False
-        plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
+
+        # TODO: Exchange this with new plot functionality (from oifits)
+        # or separete it entirely (from this function).
+        # plot = Plotter(new_file, save_dir=plot_dir)
+        # unwrap = True if "AQUARIUS" in fits_file.name else False
+        # plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
 
 def remove_flawed_telescope(fits_file: Path, telescopes: List[str], **kwargs) -> None:
@@ -142,9 +203,12 @@ def remove_flawed_telescope(fits_file: Path, telescopes: List[str], **kwargs) ->
                     mask = np.any(data == sta_index, axis=1)
                     entry.data = entry.data[~mask]
         hdul.flush()
-    plot = Plotter(new_file, save_dir=fits_file.parent)
-    unwrap = True if "AQUARIUS" in new_file.name else False
-    plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
+
+    # TODO: Exchange this with new plot functionality (from oifits)
+    # or separete it entirely (from this function).
+    # plot = Plotter(new_file, save_dir=fits_file.parent)
+    # unwrap = True if "AQUARIUS" in new_file.name else False
+    # plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
 
 def replace_data(
