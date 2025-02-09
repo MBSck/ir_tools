@@ -10,6 +10,7 @@ from .utils import (
     compute_effective_baselines,
 )
 
+
 def plot_interferometric_observables(
     wavelength_range: u.um,
     components: List[FourierComponent],
@@ -126,5 +127,3 @@ def plot_interferometric_observables(
         fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
         plt.savefig(save_dir / "t3_vs_baseline.png", format="png")
         plt.close()
-
-

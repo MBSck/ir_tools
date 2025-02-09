@@ -53,7 +53,8 @@ if __name__ == "__main__":
         "kband": [2.15] * u.um,
         "lband": windowed_linspace(3.1, 3.8, OPTIONS.data.binning.lband.value) * u.um,
         "mband": windowed_linspace(4.65, 4.9, OPTIONS.data.binning.mband.value) * u.um,
-        "nband": windowed_linspace(8.25, 12.75, OPTIONS.data.binning.nband.value) * u.um,
+        "nband": windowed_linspace(8.25, 12.75, OPTIONS.data.binning.nband.value)
+        * u.um,
     }
     # OPTIONS.data.binning.nband = nband_binning_windows * u.um
     fits_files = list((fits_dir).glob("*fits"))
@@ -66,7 +67,9 @@ if __name__ == "__main__":
     wavelengths = np.concatenate([wavelengths[band] for band in bands])
     fit_data = ["flux", "vis", "t3"]
     data = set_data(
-        fits_files, wavelengths=wavelengths, fit_data=fit_data,
+        fits_files,
+        wavelengths=wavelengths,
+        fit_data=fit_data,
     )
     if OPTIONS.fit.fitter == "emcee":
         sampler = emcee.backends.HDFBackend(path / "sampler.h5")

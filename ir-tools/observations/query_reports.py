@@ -1,8 +1,5 @@
-from pathlib import Path
-from astroquery.eso import Eso
-
 import PyPDF2
-from tqdm import tqdm
+from astroquery.eso import Eso
 
 
 def search_word_in_pdf(pdf_path, word):

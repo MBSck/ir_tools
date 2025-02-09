@@ -86,7 +86,9 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
             info["sci_seeing_start"].append(sci_seeing_start)
             info["sci_seeing_end"].append(sci_seeing_end)
 
-            sci_tau0_start = np.round(header["HIERARCH ESO ISS AMBI TAU0 START"] * 1e3, 1)
+            sci_tau0_start = np.round(
+                header["HIERARCH ESO ISS AMBI TAU0 START"] * 1e3, 1
+            )
             sci_tau0_end = np.round(header["HIERARCH ESO ISS AMBI TAU0 END"] * 1e3, 1)
             info["sci_tau0_start"].append(sci_tau0_start)
             info["sci_tau0_end"].append(sci_tau0_end)
@@ -143,7 +145,7 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
             unit=u.deg, sep=":", precision=2, alwayssign=True
         )
     ]
-    df["tpl_start"] = df["tpl_start"].dt.strftime('%Y-%m-%dT%H:%M:%S')
+    df["tpl_start"] = df["tpl_start"].dt.strftime("%Y-%m-%dT%H:%M:%S")
     df.to_excel("source_tpl_table.xlsx", index=False)
 
 

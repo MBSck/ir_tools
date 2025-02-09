@@ -1,6 +1,6 @@
 import shutil
-from pathlib import Path
 from functools import partial
+from pathlib import Path
 from typing import Callable, Dict, List
 
 import matplotlib.pyplot as plt

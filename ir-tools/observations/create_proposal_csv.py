@@ -2,29 +2,43 @@ from pathlib import Path
 
 import pandas as pd
 
+ROW_COLUMNS = [
+    "Target id",
+    "RAHours",
+    "RAMinutes",
+    "RASeconds",
+    "DECHours",
+    "DECMinutes",
+    "DECSeconds",
+    "Instrument",
+    "Instrument setup",
+    "Telescope",
+    "Excution time (h)",
+    "PI",
+    "Protection",
+    "Comments",
+]
 
-ROW_COLUMNS = ["Target id", "RAHours", "RAMinutes", "RASeconds",
-               "DECHours", "DECMinutes", "DECSeconds", "Instrument",
-               "Instrument setup", "Telescope", "Excution time (h)",
-               "PI", "Protection", "Comments"]
-
-OBSERVATION_MODES = {"MATISSE": "LR-LM&MR-LM&HR-L&LR-N&HR-N",
-                     "VISIR": "VISIR spec-LR"}
+OBSERVATION_MODES = {"MATISSE": "LR-LM&MR-LM&HR-L&LR-N&HR-N", "VISIR": "VISIR spec-LR"}
 
 TELESCOPES = {"VISIR": "UT2"}
 
 
-def create_proposal_csv(planning_file: Path,
-                        period: str, pi: str) -> None:
+def create_proposal_csv(planning_file: Path, period: str, pi: str) -> None:
     """Creates the proposal csv from the
     planning data.
     """
     df = pd.read_excel(planning_file, sheet_name=f"{period.upper()}_Planning")
-    df = df[(df[f"{period.lower()} UTs"] == True)
-            | (df[f"{period.lower()} ATs"] == True)]
+    df = df[
+        (df[f"{period.lower()} UTs"] == True) | (df[f"{period.lower()} ATs"] == True)
+    ]
     # ra, dec = df["Coordinates (J2000)"], df["Unnamed: 9"]
-    df[["RAHours", "RAMinutes", "RASeconds"]] = df["Coordinates (J2000)"].str.split(":", expand=True)
-    df[["DECHours", "DECMinutes", "DECSeconds"]] = df["Unnamed: 9"].str.split(":", expand=True)
+    df[["RAHours", "RAMinutes", "RASeconds"]] = df["Coordinates (J2000)"].str.split(
+        ":", expand=True
+    )
+    df[["DECHours", "DECMinutes", "DECSeconds"]] = df["Unnamed: 9"].str.split(
+        ":", expand=True
+    )
 
     new_df_rows = []
     for index, row in df.iterrows():
@@ -40,8 +54,7 @@ def create_proposal_csv(planning_file: Path,
             if name != "MATISSE":
                 telescope = TELESCOPES[name]
             else:
-                telescope = "VLTI/4UT" if row[f"{period.lower()} UTs"]\
-                    else "VLTI/4AT"
+                telescope = "VLTI/4UT" if row[f"{period.lower()} UTs"] else "VLTI/4AT"
 
             new_row = dict.fromkeys(ROW_COLUMNS)
             new_row["Target id"] = row["Name"]
@@ -65,8 +78,7 @@ def create_proposal_csv(planning_file: Path,
     for coord in ["RA", "DEC"]:
         for col in ["Hours", "Minutes", "Seconds"]:
             if col == "Hours":
-                new_df = new_df.rename(
-                        columns={f"{coord}{col}": coord_names[coord]})
+                new_df = new_df.rename(columns={f"{coord}{col}": coord_names[coord]})
             else:
                 new_df = new_df.rename(columns={f"{coord}{col}": ""})
 

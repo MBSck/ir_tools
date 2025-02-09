@@ -121,7 +121,7 @@ def calculate_opacity(
         )
         flux = np.interp(wl[ind], wl_flux, flux)
         op_cont = np.interp(wl[ind], wl_cont, op_cont) * weight_cont
-        op_sil[ind] = (flux / flux_scaling - op_cont)
+        op_sil[ind] = flux / flux_scaling - op_cont
 
     return wl, op_sil
 
@@ -162,9 +162,7 @@ if __name__ == "__main__":
         savefig=plot_dir / "nband_fit.pdf",
     )
 
-    _, op_sil_norm = calculate_opacity(
-        data_dir, weights / weights.sum(), method=method
-    )
+    _, op_sil_norm = calculate_opacity(data_dir, weights / weights.sum(), method=method)
     _, op_sil = calculate_opacity(data_dir, weights, method=method)
     opacity_scale = max(op_sil_norm / op_sil)
 

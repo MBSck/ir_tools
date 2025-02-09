@@ -5,11 +5,12 @@ import numpy as np
 from astropy.io import fits
 from uncertainties import unumpy
 
-
 if __name__ == "__main__":
     new_fits = None
     wavelengths, fluxes, errors = [], [], []
-    for fits_file in list((Path().home() / "Data" / "fitting_data" / "hd142527").glob("*_N_*.fits")):
+    for fits_file in list(
+        (Path().home() / "Data" / "fitting_data" / "hd142527").glob("*_N_*.fits")
+    ):
         if new_fits is None:
             new_fits = "HD_142527_N_AVERAGE_SED.fits"
             shutil.copy(fits_file, new_fits)

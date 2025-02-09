@@ -19,14 +19,19 @@ class TargetInformation:
 
     def _get_target_rows(self, data_frame: pd.DataFrame):
         """Gets the rows containing the target."""
-        rows_input = data_frame[data_frame.apply(
-            lambda row: self.name in row.values, axis=1)]
-        rows_wo_space = data_frame[data_frame.apply(
-            lambda row: self.name.replace(" ", "")
-            in row.values, axis=1)]
-        rows_w_underline = data_frame[data_frame.apply(
-            lambda row: self.name.replace(" ", "_")
-            in row.values, axis=1)]
+        rows_input = data_frame[
+            data_frame.apply(lambda row: self.name in row.values, axis=1)
+        ]
+        rows_wo_space = data_frame[
+            data_frame.apply(
+                lambda row: self.name.replace(" ", "") in row.values, axis=1
+            )
+        ]
+        rows_w_underline = data_frame[
+            data_frame.apply(
+                lambda row: self.name.replace(" ", "_") in row.values, axis=1
+            )
+        ]
         return pd.concat([rows_input, rows_wo_space, rows_w_underline])
 
     def _get_log_entries(self) -> Dict[str, Dict]:
@@ -35,14 +40,14 @@ class TargetInformation:
         observations = {}
         for sheet_name in excel_file.sheet_names[1:]:
             observation = {}
-            for index, row in enumerate(self._get_target_rows(
-                    excel_file.parse(sheet_name)).iterrows(), start=1):
+            for index, row in enumerate(
+                self._get_target_rows(excel_file.parse(sheet_name)).iterrows(), start=1
+            ):
                 row = row[1]
                 if not row.empty:
                     observation[f"Observation {index}"] = str(row[2])
             observations[sheet_name] = observation
-            observations = {key: value for key, value
-                            in observations.items() if value}
+            observations = {key: value for key, value in observations.items() if value}
         return observations
 
     def _get_planning_entries(self) -> Dict[str, Dict]:
@@ -56,19 +61,17 @@ class TargetInformation:
             period_name = sheet_name.split("_")[0].lower()
             row = self._get_target_rows(excel_file.parse(sheet_name))
             if not row.empty:
-                period["ATs"] =\
-                    row[f"{period_name} ATs"].astype(bool).values[0]
-                period["UTs"] =\
-                    row[f"{period_name} UTs"].astype(bool).values[0]
-                period["Notes"] =\
+                period["ATs"] = row[f"{period_name} ATs"].astype(bool).values[0]
+                period["UTs"] = row[f"{period_name} UTs"].astype(bool).values[0]
+                period["Notes"] = (
                     row[f"{period_name.capitalize()} Notes"].str.cat().strip()
+                )
                 periods[period_name] = period
         return periods
 
     def _get_target_list_entries(self) -> Dict[str, Dict]:
         """Gets all the entries from the target list."""
-        data_frame = pd.read_excel("mat_target_list.xlsx",
-                                   sheet_name="obs_list_sci")
+        data_frame = pd.read_excel("mat_target_list.xlsx", sheet_name="obs_list_sci")
         observations = {}
         for row in self._get_target_rows(data_frame).iterrows():
             row = row[1]
@@ -96,9 +99,11 @@ class TargetInformation:
         for key, value in self._get_planning_entries().items():
             ats = "YES" if value["ATs"] else "NO"
             uts = "YES" if value["UTs"] else "NO"
-            print(f"{key.capitalize()}:\tSelected for ATs '{ats}', "
-                  f"selected for UTs '{uts}'.\n"
-                  f"\tNotes - {value['Notes'].capitalize()}")
+            print(
+                f"{key.capitalize()}:\tSelected for ATs '{ats}', "
+                f"selected for UTs '{uts}'.\n"
+                f"\tNotes - {value['Notes'].capitalize()}"
+            )
         print()
 
     def print_list_entries(self):
@@ -106,8 +111,10 @@ class TargetInformation:
         print("The target lists contain the following entries.")
         print(f"{'':-^60}")
         for key, value in self._get_target_list_entries().items():
-            print(f"{key}: Seeing {value['seeing']} arcsec, "
-                  f"tau0 {value['tau0']} ms, and DIT {value['DIT']}.")
+            print(
+                f"{key}: Seeing {value['seeing']} arcsec, "
+                f"tau0 {value['tau0']} ms, and DIT {value['DIT']}."
+            )
         print()
 
     def print_overview(self):

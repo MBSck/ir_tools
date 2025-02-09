@@ -1,5 +1,3 @@
-from pprint import pprint
-
 import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,30 +12,35 @@ def wise_to_flux(flux: float, lband: bool):
     return np.round(31.674 * 10.0 ** (-flux / 2.5), 2)
 
 
-def query_and_filter_catalogs(object_name: str, radius=1*u.arcsec):
+def query_and_filter_catalogs(object_name: str, radius=1 * u.arcsec):
     """Query Vizier for the specified object and filter the catalogs to
     only include those with WISE data and multiple epochs."""
     Vizier.ROW_LIMIT = -1
     catalogs = Vizier.query_object(object_name, radius=radius)
     multi_epoch_catalogs = []
-    
+
     for catalog in catalogs:
-        has_wise_columns = any(col for col in catalog.colnames if any(f"W{index}" in col for index in range(1, 5)))
-        
+        has_wise_columns = any(
+            col
+            for col in catalog.colnames
+            if any(f"W{index}" in col for index in range(1, 5))
+        )
+
         # has_multiple_epochs(catalog):
         if has_wise_columns:
             multi_epoch_catalogs.append(catalog)
-    
+
     return multi_epoch_catalogs
 
+
 # TODO: Check AKARI as well for the targets
-def query_catalog(object_name: str, catalog: str,
-                  index: int):
+def query_catalog(object_name: str, catalog: str, index: int):
     """Query the specified catalog for the specified object
     from a multi epoch catalog."""
     if catalog == "wise":
-        wise = Irsa.query_region(object_name, catalog="allwise_p3as_mep",
-                                  spatial="Cone", radius=1*u.arcsec)
+        wise = Irsa.query_region(
+            object_name, catalog="allwise_p3as_mep", spatial="Cone", radius=1 * u.arcsec
+        )
 
         w, w_err = wise[f"w{index}mpro_ep"], wise[f"w{index}sigmpro_ep"]
         # w_err_ratio = w_err / w
@@ -47,8 +50,10 @@ def query_catalog(object_name: str, catalog: str,
         labels = labels[ind]
         w, w_err = w[ind], w_err[ind]
         isot = [label.isot for label in labels]
-        data = {k: {"time": [], "value": [], "error": []}
-                for k in np.unique([iso.split("T")[0] for iso in isot])}
+        data = {
+            k: {"time": [], "value": [], "error": []}
+            for k in np.unique([iso.split("T")[0] for iso in isot])
+        }
 
         for w_entry, w_err_entry, iso in zip(w, w_err, isot):
             key, time = iso.split("T")
@@ -67,8 +72,13 @@ def plot_multi_epoch(object_name: str) -> None:
         wise_data = query_catalog(object_name, "wise", index)
         errorbar_kwargs = {"fmt": "o", "ecolor": "gray", "capsize": 5}
         for key, value in wise_data.items():
-            ax.errorbar(value["time"], value["value"], value["error"],
-                        label=key, **errorbar_kwargs)
+            ax.errorbar(
+                value["time"],
+                value["value"],
+                value["error"],
+                label=key,
+                **errorbar_kwargs,
+            )
         ax.set_ylabel("Luminosity (mag)")
         ax.set_xlabel("Time (UTC)")
         # ax.set_ylim([0, None])
@@ -90,6 +100,6 @@ if __name__ == "__main__":
     # catalog_list = Vizier.find_catalogs("WISE")
     # breakpoint()
     # pprint({k:v.description for k,v in catalog_list.items()})
-    
+
     # catalogs = Irsa.list_catalogs()
     plot_multi_epoch("hd142527")

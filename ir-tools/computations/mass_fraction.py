@@ -8,26 +8,29 @@ from ppdmod import utils
 from ppdmod.data import ReadoutFits
 
 
-def calculate_coefficient(silicate: np.ndarray,
-                          continuum: np.ndarray) -> np.ndarray:
+def calculate_coefficient(silicate: np.ndarray, continuum: np.ndarray) -> np.ndarray:
     """Calculates the coefficient for a 2/3 to 1/3 silicate to
     continuum ratio."""
-    return 2*silicate/(continuum+2*silicate)
+    return 2 * silicate / (continuum + 2 * silicate)
 
 
-def plot_mass_fractions(wavelength_grid: np.ndarray,
-                        grf_files: Path, qval_files: Path,
-                        continuum: Path, weights: List[float]):
+def plot_mass_fractions(
+    wavelength_grid: np.ndarray,
+    grf_files: Path,
+    qval_files: Path,
+    continuum: Path,
+    weights: List[float],
+):
     wl_cont, op_cont = utils.load_data(continuum, load_func=utils.qval_to_opacity)
-    op_cont = np.interp(wavelength_grid, wl_cont*u.um, op_cont)
+    op_cont = np.interp(wavelength_grid, wl_cont * u.um, op_cont)
 
     wl_dhs, op_dhs = utils.load_data(qval_files, load_func=utils.qval_to_opacity)
     op_dhs = utils.linearly_combine_data(op_dhs, weights)
-    op_dhs = np.interp(wavelength_grid, wl_dhs[0]*u.um, op_dhs)
+    op_dhs = np.interp(wavelength_grid, wl_dhs[0] * u.um, op_dhs)
 
     wl_grf, op_grf = utils.load_data(grf_files)
     op_grf = utils.linearly_combine_data(op_grf, weights)
-    op_grf = np.interp(wavelength_grid, wl_grf[0]*u.um, op_grf)
+    op_grf = np.interp(wavelength_grid, wl_grf[0] * u.um, op_grf)
 
     dhs_rel = calculate_coefficient(op_dhs, op_cont)
     grf_rel = calculate_coefficient(op_grf, op_cont)
@@ -66,24 +69,29 @@ if __name__ == "__main__":
     wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
     grf_dir = Path("/Users/scheuck/Data/opacities/GRF")
-    grf_files = ["MgOlivine0.1.Combined.Kappa",
-                 "MgOlivine2.0.Combined.Kappa",
-                 "MgPyroxene2.0.Combined.Kappa",
-                 "Forsterite0.1.Combined.Kappa",
-                 "Forsterite2.0.Combined.Kappa",
-                 "Enstatite2.0.Combined.Kappa"]
+    grf_files = [
+        "MgOlivine0.1.Combined.Kappa",
+        "MgOlivine2.0.Combined.Kappa",
+        "MgPyroxene2.0.Combined.Kappa",
+        "Forsterite0.1.Combined.Kappa",
+        "Forsterite2.0.Combined.Kappa",
+        "Enstatite2.0.Combined.Kappa",
+    ]
     grf_files = list(map(lambda x: grf_dir / x, grf_files))
 
     qval_file_dir = path / "qval"
-    qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
-                  "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
-                  "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
-                  "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
-                  "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
-                  "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
+    qval_files = [
+        "Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
+        "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
+        "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
+        "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
+        "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
+        "Q_En_Jaeger_DHS_f1.0_rv1.5.dat",
+    ]
     qval_files = list(map(lambda x: qval_file_dir / x, qval_files))
     dhs_continuum_file = qval_file_dir / "Q_amorph_c_rv0.1.dat"
 
-    weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-    plot_mass_fractions(wavelength_axes, grf_files,
-                        qval_files, dhs_continuum_file, weights)
+    weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6]) / 100
+    plot_mass_fractions(
+        wavelength_axes, grf_files, qval_files, dhs_continuum_file, weights
+    )

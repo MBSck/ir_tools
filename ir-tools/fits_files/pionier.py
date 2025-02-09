@@ -1,12 +1,11 @@
 import shutil
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 import astropy.units as u
 import numpy as np
-from matadrs.utils.plot import Plotter
-from astropy.table import QTable
 from astropy.io import fits
+from astropy.table import QTable
 from tqdm import tqdm
 from uncertainties import unumpy
 
@@ -31,8 +30,9 @@ def delete_add_ins(file: Path) -> None:
 
 
 # TODO: Add the flags for the flux
-def calculate_vis(file: Path, flux_file: Path,
-                  index: Optional[int] = None, **kwargs) -> None:
+def calculate_vis(
+    file: Path, flux_file: Path, index: Optional[int] = None, **kwargs
+) -> None:
     """Calculates the correlated fluxes from the
     squared visibilities and a total flux.
 
@@ -69,8 +69,9 @@ def calculate_vis(file: Path, flux_file: Path,
 
     shutil.copy(file, (new_file := dir / f"{file.stem}_vis.fits"))
     with fits.open(new_file, mode="update") as hdul:
-        if np.max(hdul["oi_vis2", index].data["vis2data"] > 1)\
-                or np.min(hdul["oi_vis2", index].data["vis2data"] < 0):
+        if np.max(hdul["oi_vis2", index].data["vis2data"] > 1) or np.min(
+            hdul["oi_vis2", index].data["vis2data"] < 0
+        ):
             file.rename(bad_data_dir / file.name)
             new_file.unlink()
             return
@@ -79,10 +80,15 @@ def calculate_vis(file: Path, flux_file: Path,
         flux_header["EXTNAME"] = "oi_flux".upper()
 
         flux = fits.BinTableHDU(
-            QTable({"WAVELENGTH": [wavelengths * u.um],
+            QTable(
+                {
+                    "WAVELENGTH": [wavelengths * u.um],
                     "FLUXDATA": [flux_data * u.Jy],
-                    "FLUXERR": [flux_data * 0.1 * u.Jy]}),
-            header=flux_header)
+                    "FLUXERR": [flux_data * 0.1 * u.Jy],
+                }
+            ),
+            header=flux_header,
+        )
 
         if "oi_flux" not in hdul:
             hdul.append(flux)

@@ -1,12 +1,12 @@
 import shutil
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import Dict, List, Tuple
 
 import astropy.units as u
 import numpy as np
 import yaml
-from astropy.table import Table
 from astropy.io import fits
+from astropy.table import Table
 from tqdm import tqdm
 
 

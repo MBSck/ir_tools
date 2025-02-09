@@ -2,9 +2,77 @@ import shutil
 from pathlib import Path
 from typing import List, Optional
 
+import astropy.units as u
 import numpy as np
 from astropy.io import fits
 from matadrs.utils.plot import Plotter
+
+
+def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
+    """Calculates the stellar radius from the luminosity and temperature."""
+    luminosity, temperature = (
+        u.Quantity(luminosity, u.Lsun),
+        u.Quantity(temperature, u.K),
+    )
+    return np.sqrt(
+        luminosity.to(u.W) / (4 * np.pi * const.sigma_sb * temperature**4)
+    ).to(u.Rsun)
+
+
+def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
+    """Converts an angular diameter of an object at a certain distance
+    from the observer from mas to meters.
+
+    Parameters
+    ----------
+    angular_diameter : astropy.units.mas
+        The angular diameter of an object.
+    distance : astropy.units.pc
+        The distance to the object.
+
+    Returns
+    -------
+    diameter : astropy.units.m
+        The diameter of the object.
+
+    Notes
+    -----
+    The formula for the angular diameter small angle approximation is
+
+    .. math:: d = \\delta*D
+
+    where 'd' is the diameter of the object and 'D' is the distance from the
+    observer to the object and ..math::`\\delta` is the angular diameter.
+    """
+    return angular_diameter.to(u.rad).value * distance.to(u.m)
+
+
+def distance_to_angular(diameter: u.au, distance: u.pc) -> u.mas:
+    """Converts an angular diameter of an object at a certain distance
+    from the observer from mas to meters.
+
+    Parameters
+    ----------
+    diameter : astropy.units.au
+        The diameter of an object.
+    distance : astropy.units.pc
+        The distance to the object.
+
+    Returns
+    -------
+    diameter : astropy.units.mas
+        The diameter of the object.
+
+    Notes
+    -----
+    The formula for the angular diameter small angle approximation is
+
+    .. math:: \\delta = \\frac{d}{D}
+
+    where 'd' is the diameter of the object and 'D' is the distance from the
+    observer to the object and ..math::`\\delta` is the angular diameter.
+    """
+    return ((diameter.to(u.m) / distance.to(u.m)) * u.rad).to(u.mas)
 
 
 def load_flux_model(flux_file: Path) -> np.ndarray:
@@ -29,8 +97,9 @@ def average_total_flux(directory: Optional[Path] = None, **kwargs) -> None:
             oi_flux = hdul["oi_flux"].data
             flux, fluxerr = oi_flux["fluxdata"], oi_flux["fluxerr"]
             avg_flux = np.mean(flux, axis=0)
-            avg_fluxerr = np.sqrt(np.hypot(np.nanstd(flux, axis=0),
-                                           np.nanmean(fluxerr, axis=0)))
+            avg_fluxerr = np.sqrt(
+                np.hypot(np.nanstd(flux, axis=0), np.nanmean(fluxerr, axis=0))
+            )
             hdul["oi_flux"].data = hdul["oi_flux"].data[:1]
             hdul["oi_flux"].data["fluxdata"] = avg_flux
             hdul["oi_flux"].data["fluxerr"] = avg_fluxerr
@@ -40,8 +109,7 @@ def average_total_flux(directory: Optional[Path] = None, **kwargs) -> None:
         plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
 
-def remove_flawed_telescope(fits_file: Path, telescopes: List[str],
-                            **kwargs) -> None:
+def remove_flawed_telescope(fits_file: Path, telescopes: List[str], **kwargs) -> None:
     """Removes the data from one or more telescopes via their names.
 
     Parameters
@@ -51,11 +119,14 @@ def remove_flawed_telescope(fits_file: Path, telescopes: List[str],
     telescopes : list of str
         The names of the telescopes to remove the data from.
     """
-    new_file = fits_file.parent / f"{fits_file.stem}_{'-'.join(telescopes)}_removed.fits"
+    new_file = (
+        fits_file.parent / f"{fits_file.stem}_{'-'.join(telescopes)}_removed.fits"
+    )
     shutil.copy(fits_file, new_file)
     with fits.open(new_file, "update") as hdul:
-        sta_indices = dict(zip(hdul["oi_array"].data["tel_name"],
-                               hdul["oi_array"].data["sta_index"]))
+        sta_indices = dict(
+            zip(hdul["oi_array"].data["tel_name"], hdul["oi_array"].data["sta_index"])
+        )
         for telescope in telescopes:
             sta_index = sta_indices[telescope]
             for entry in hdul:
@@ -76,9 +147,9 @@ def remove_flawed_telescope(fits_file: Path, telescopes: List[str],
     plot.add_mosaic(unwrap=unwrap).plot(**kwargs)
 
 
-def replace_data(file: Path,
-                 file_for_replace: Path,
-                 header: str, sub_headers: List[str]) -> None:
+def replace_data(
+    file: Path, file_for_replace: Path, header: str, sub_headers: List[str]
+) -> None:
     """Replaces some data of a specific header and sub headers
     of file with the same of a different file.
 
@@ -91,8 +162,10 @@ def replace_data(file: Path,
         data = hdul[header].data
         header = hdul[header].header
         if "INJECT" in header:
-            print("[SKIPPING]: There is already data"
-                  f"injected from another file for the '{header}' header.")
+            print(
+                "[SKIPPING]: There is already data"
+                f"injected from another file for the '{header}' header."
+            )
             return
         for sub_header in sub_headers:
             data[sub_header] = data_to_inject[sub_header]

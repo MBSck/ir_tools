@@ -2,8 +2,6 @@ from functools import reduce
 from pathlib import Path
 from typing import List
 
-import matplotlib.pyplot as plt
-import numpy as np
 import optool
 import toml
 
@@ -38,10 +36,10 @@ def compute_stoichiometries(
     else:
         paths = [first]
 
-    particle = reduce(lambda x, y: x + y, [
-        optool.particle(" ".join([*command, f"-c {path}"]))
-        for path in paths
-    ])
+    particle = reduce(
+        lambda x, y: x + y,
+        [optool.particle(" ".join([*command, f"-c {path}"])) for path in paths],
+    )
 
     # pz2 = optool.particle("~/bin/optool "+dhs_opt+" "+wl_opt+" -a "+gs+" /Users/jvarga/Dokumentumok/MATISSE/pro/optool/lnk_data/ad/oliSC_z_551K.lnk")
 

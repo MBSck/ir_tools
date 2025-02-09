@@ -1,14 +1,15 @@
-from functools import partial
-
 import astropy.units as u
 import astropy.constants as const
 import numpy as np
 from astropy.modeling.models import BlackBody
-from ppdmod.utils import distance_to_angular, angular_to_distance
+
+from ..utils import distance_to_angular
 
 
 def calculate_dust_temperature(luminosity, radius):
-    return (luminosity.to(u.W) / (16 * np.pi * radius.to(u.m)**2 * const.sigma_sb)) ** (1/4)
+    return (
+        luminosity.to(u.W) / (16 * np.pi * radius.to(u.m) ** 2 * const.sigma_sb)
+    ) ** (1 / 4)
 
 
 def calculate_intensity(wl, temps):
@@ -17,25 +18,28 @@ def calculate_intensity(wl, temps):
 
 def calculate_opacity(wl, beta):
     nu = const.c / wl.to(u.m)
-    return 0.1 * (nu / (1e12 * u.Hz).to(u.Hz))**beta * u.cm**2/u.g
+    return 0.1 * (nu / (1e12 * u.Hz).to(u.Hz)) ** beta * u.cm**2 / u.g
 
 
 def calculate_emissivity(radius, sigma0, p, opacity):
-    surface_density = (sigma0 * (radius/(1 * u.au))**(-p)) * u.g/u.cm**2
+    surface_density = (sigma0 * (radius / (1 * u.au)) ** (-p)) * u.g / u.cm**2
     optical_depth = surface_density * opacity
     return 1 - np.exp(-optical_depth)
 
 
 def integrate_flux(luminosity, radial_range, wl, distance, sigma0, p):
-    radius = np.logspace(
-        np.log10(radial_range[0].value),
-        np.log10(radial_range[1].value), 2048) * radial_range.unit
+    radius = (
+        np.logspace(
+            np.log10(radial_range[0].value), np.log10(radial_range[1].value), 2048
+        )
+        * radial_range.unit
+    )
     temps = calculate_dust_temperature(luminosity, radius)
     intensity = calculate_intensity(wl, temps)
     cmb_intensity = calculate_intensity(wl, 2.73 * u.K)
     intensity -= cmb_intensity
 
-    intensity = intensity.to(u.erg/u.s/u.cm**2/u.Hz/u.mas**2)
+    intensity = intensity.to(u.erg / u.s / u.cm**2 / u.Hz / u.mas**2)
     opacity = calculate_opacity(wl, 1)
     intensity *= calculate_emissivity(radius, sigma0, p, opacity)
     radius_ang = distance_to_angular(radius, distance)
@@ -43,16 +47,21 @@ def integrate_flux(luminosity, radial_range, wl, distance, sigma0, p):
 
 
 def integrate_dust_mass(p, sigma0, radial_range):
-    radius = np.logspace(
-        np.log10(radial_range[0].value),
-        np.log10(radial_range[1].value), 2048) * radial_range.unit
-    surface_density = (sigma0 * (radius/(1 * u.au))**(-p)) * u.g/u.cm**2
-    return (2 * np.pi * np.trapz(surface_density * radius.to(u.cm), radius.to(u.cm)))
+    radius = (
+        np.logspace(
+            np.log10(radial_range[0].value), np.log10(radial_range[1].value), 2048
+        )
+        * radial_range.unit
+    )
+    surface_density = (sigma0 * (radius / (1 * u.au)) ** (-p)) * u.g / u.cm**2
+    return 2 * np.pi * np.trapz(surface_density * radius.to(u.cm), radius.to(u.cm))
 
 
 if __name__ == "__main__":
     continuum_flux = 4.1 * u.mJy
-    bb_flux = integrate_flux(22.39*u.Lsun, [0.1, 4]*u.au, 0.88*u.mm, 158.51*u.pc, 0, 0)
+    bb_flux = integrate_flux(
+        22.39 * u.Lsun, [0.1, 4] * u.au, 0.88 * u.mm, 158.51 * u.pc, 0, 0
+    )
 
     # working_combinations = {}
     # for p in np.arange(0.5, 1.6, 0.1):

@@ -227,12 +227,7 @@ if __name__ == "__main__":
     plt.savefig(plot_dir / "interp_op_to_flux.pdf", format="pdf")
 
     weights, radii, matrix = compute_temperature_grid(
-        wl_flux,
-        158.51 * u.pc,
-        flux * u.Jy,
-        interp_op_sil,
-        interp_op_cont,
-        njobs=50
+        wl_flux, 158.51 * u.pc, flux * u.Jy, interp_op_sil, interp_op_cont, njobs=50
     )
 
     data = SimpleNamespace(weights=weights, radii=radii, values=matrix)
