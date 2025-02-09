@@ -7,6 +7,23 @@ import numpy as np
 from astropy.io import fits
 
 
+def get_plot_layout(nplots: int) -> Tuple[int, int]:
+    """Gets the best plot arrangement for a given number of plots."""
+    sqrt_nplots = np.sqrt(nplots)
+    rows, cols = int(np.floor(sqrt_nplots)), int(np.ceil(sqrt_nplots))
+
+    while rows * cols < nplots:
+        if cols < rows:
+            cols += 1
+        else:
+            rows += 1
+
+    while (rows - 1) * cols >= nplots:
+        rows -= 1
+
+    return rows, cols
+
+
 def get_band(
     name_or_limits: str | List[float] | Tuple[float],
 ) -> str | Tuple[float, float]:
@@ -27,17 +44,17 @@ def get_band(
     if isinstance(name_or_limits, str):
         match name_or_limits:
             case "hband":
-                return 1.5, 1.8
+                return 1.5e-6, 1.8e-6
             case "kband":
-                return 1.9, 2.5
+                return 1.9e-6, 2.5e-6
             case "lband":
-                return 2.6, 3.99
+                return 2.6e-6, 3.99e-6
             case "mband":
-                return 4.0, 6.0
+                return 4e-6, 6e-6
             case "lmband":
-                return 2.6, 6.0
+                return 2.6e-6, 6e-6
             case "nband":
-                return 7.5, 16.0
+                return 7.5e-6, 16e-6
             case _:
                 raise ValueError(
                     "Band not recognised. Supported inputs can be 'hband', 'kband', 'lband',"
@@ -45,29 +62,69 @@ def get_band(
                 )
     elif isinstance(name_or_limits, (list, tuple, np.ndarray)):
         match name_or_limits:
-            case (wl_min, wl_max) if 1.5 < wl_min < 1.8 and 1.5 < wl_max < 1.8:
+            case (wl_min, wl_max) if 1.5e-6 <= wl_min and wl_max <= 1.8e-6:
                 return "hband"
-            case (wl_min, wl_max) if 1.9 < wl_min < 2.5 and 1.9 < wl_max < 2.5:
+            case (wl_min, wl_max) if 1.9e-6 <= wl_min and wl_max <= 2.5e-6:
                 return "kband"
-            case (wl_min, wl_max) if 2.6 < wl_min < 4.0 and 2.6 < wl_max < 4.0:
+            case (wl_min, wl_max) if 2.6e-6 <= wl_min and wl_max <= 4e-6:
                 return "lband"
-            case (wl_min, wl_max) if 4.0 <= wl_min < 6.0 and 4.0 <= wl_max < 6.0:
+            case (wl_min, wl_max) if 4e-6 < wl_min and wl_max < 6e-6:
                 return "mband"
-            case (wl_min, wl_max) if 2.6 < wl_min < 6.0 and 2.6 < wl_max < 6.0:
+            case (wl_min, wl_max) if 2.6e-6 < wl_min and wl_max < 6e-6:
                 return "lmband"
-            case (wl_min, wl_max) if 7.5 < wl_min < 16.0 and 7.5 < wl_max < 16.0:
+            case (wl_min, wl_max) if 7.5e-6 < wl_min and wl_max < 16e-6:
                 return "nband"
             case _:
                 raise ValueError(
-                    "Band not recognised. Supported ranges are between (1.5, 1.8)"
-                    " for 'hband',\n (1.9, 2.5) for 'kband', (2.6, 3.99) for 'lband',"
-                    " (4.0, 6.0) for 'mband', and (7.5, 16.0) for 'nband'."
+                    "Band not recognised. Supported ranges are between (1.5e-6, 1.8e-6)"
+                    " for 'hband',\n (1.9e-6, 2.5e-6) for 'kband', (2.6e-6, 4e-6) for 'lband',"
+                    " (4e-6, 6e-6) for 'mband', and (7.5e-6, 16e-6) for 'nband'."
                 )
     else:
         raise ValueError(
             "Input of wrong type. Needs to be a string or a list or tuple"
             " or a numpy array of floats."
         )
+
+
+def convert_coords_to_polar(
+    x: float | np.ndarray,
+    y: float | np.ndarray,
+    cinc: float | None = None,
+    pa: float | None = None,
+) -> Tuple[float | np.ndarray, float | np.ndarray]:
+    """Calculates the effective baselines from the projected baselines
+    in mega lambda.
+
+    Parameters
+    ----------
+    x: float or numpy.ndarray or astropy.units.Quantity
+        The x-coordinate.
+    y: float or numpy.ndarray or astropy.units.Quantity
+        The y-coordinate.
+    cinc: float, optional
+        The cosine of the inclination.
+    pa: float, optional
+        The positional angle of the object (in degree).
+
+    Returns
+    -------
+    distance : astropy.units.Quantity
+        Returns the distance to the point.
+    angle : astropy.units.rad
+        Returns the angle of the point.
+    """
+    if pa is not None:
+        pa = pa / 180 * np.pi
+        xr = x * np.cos(pa) - y * np.sin(pa)
+        yr = x * np.sin(pa) + y * np.cos(pa)
+    else:
+        xr, yr = x, y
+
+    if cinc is not None:
+        xr *= cinc
+
+    return np.hypot(xr, yr), np.arctan2(xr, yr)
 
 
 def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
