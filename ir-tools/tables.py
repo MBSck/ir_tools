@@ -284,35 +284,29 @@ def get_date(night: str, nights: pd.DataFrame) -> str | None:
 # Do the same for the new data type and also sort by bands.
 # Also reimplement the arrays (but from the header this time).
 # Chopped, NCcorrCtot, NOCHOP is the progressing of the files themselves
-def source_info(data_dir: Path, sources: List[str]) -> None:
-    keys = [
-        "source",
-        "tpl_start",
-        "year",
-        "date",
-        "sci_seeing_start",
-        "sci_seeing_end",
-        "sci_tau0_start",
-        "sci_tau0_end",
-        "cal_seeing",
-        "cal_tau0",
-        "array",
-        "band",
-        "chopped",
-        "pipe_version",
-        "cal_name",
-        "cal_ra",
-        "cal_dec",
-        "cal_diam",
-        "cal_diam_err",
-        "cal_jdsc",
-    ]
+def source_info(
+    data_dir: Path, sources: List[str], save_dir: Path | None = None
+) -> None:
+    save_dir = Path().cwd() if save_dir is None else save_dir
+    def sorting_key(row) -> int:
+        if row["band"] == "LM":
+            if row["chopped"]:
+                return 0
+            elif row["nc_corr_ctot"]:
+                return 1
+            else:
+                return 3
+        else:
+            return 4
+
     dfs = []
-    sources_sorted = query(sources).sort_values(by="RA")["source"].tolist()
-    breakpoint()
+    sources_sorted = list(
+        map(get_dir_name, query(sources).sort_values(by="RA")["source"].tolist())
+    )
     for source in sources_sorted:
-        info = {key: [] for key in keys}
-        for fits_file in list((data_dir / get_dir_name(source)).glob("*.fits")):
+        info = {key: [] for key in var.SOURCE_INFO_KEYS}
+        source_dir = data_dir / source / "matisse" / "non_treated"
+        for fits_file in list(source_dir.glob("*.fits")):
             with fits.open(fits_file) as hdul:
                 header = hdul[0].header
 
@@ -370,11 +364,14 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
             # config = ARRAY_CONFIGS[config.group()] if config else "other"
             info["array"].append("")
             info["band"].append(header["HIERARCH ESO DET NAME"].split("-")[1])
-            info["chopped"].append("nochop" in fits_file.name.lower())
+            info["chopped"].append("CHOPPED" in fits_file.stem)
+            info["nc_corr_ctot"].append("NCcorrCtot" in fits_file.stem)
 
         source_df = pd.DataFrame(info)
         source_df["tpl_start"] = pd.to_datetime(source_df["tpl_start"])
-        dfs.append(source_df.sort_values(by="tpl_start"))
+        source_df["sort_key"] = source_df.apply(sorting_key, axis=1)
+        source_df = source_df.sort_values(by=["tpl_start", "sort_key"])
+        dfs.append(source_df.drop(columns=["sort_key"]))
 
     df = pd.concat(dfs, axis=0, ignore_index=True)
     coord = SkyCoord(
@@ -390,7 +387,7 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
         )
     ]
     df["tpl_start"] = df["tpl_start"].dt.strftime("%Y-%m-%dT%H:%M:%S")
-    df.to_excel("source_tpl_table.xlsx", index=False)
+    df.to_excel(save_dir / "source_tpl_table.xlsx", index=False)
 
 
 def fit_results(
@@ -433,4 +430,5 @@ if __name__ == "__main__":
     df = source_info(
         source_dir,
         get_sources(source_dir / "MATISSE data overview.xlsx"),
+        source_dir,
     )

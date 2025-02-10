@@ -11,6 +11,30 @@ def add_array_config(
     return {**dictionary, **{perm: value for perm in perms}}
 
 
+SOURCE_INFO_KEYS = [
+    "source",
+    "tpl_start",
+    "year",
+    "date",
+    "sci_seeing_start",
+    "sci_seeing_end",
+    "sci_tau0_start",
+    "sci_tau0_end",
+    "cal_seeing",
+    "cal_tau0",
+    "array",
+    "band",
+    "chopped",
+    "nc_corr_ctot",
+    "pipe_version",
+    "cal_name",
+    "cal_ra",
+    "cal_dec",
+    "cal_diam",
+    "cal_diam_err",
+    "cal_jdsc",
+]
+
 FIELDS_TO_KEY = {
     "Spectral Type": "SP_TYPE",
     "RA": "RA",
