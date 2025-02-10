@@ -1,35 +1,19 @@
-import re
-import shutil
 import string
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List
 
+import astropy.units as u
 import numpy as np
 import pandas as pd
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from matadrs.utils.readout import ReadoutFits
 from ppdmod.plot import format_labels
-from pylatex import Document, MultiColumn, Section, Tabular
-from pylatex.utils import NoEscape
-from tqdm import tqdm
-from uncertainties import unumpy
+from pylatex import Document, MultiColumn, NoEscape, Section, Tabular
 
-LATTICE_STRUCTURE = {
-    "pyroxene": "amorphous",
-    "forsterite": "crystalline",
-    "enstatite": "crystalline",
-    "silica": "crystalline",
-    "carbon": "amorphous",
-}
-
-CHEMICAL_FORMULAS = {
-    "pyroxene": r"\ce{Mg_{x}Fe_{1-x}SiO3}",
-    "forsterite": r"\ce{Mg2SiO4}",
-    "enstatite": r"\ce{MgSiO3}",
-    "silica": r"\ce{SiO2}",
-    "carbon": r"\ce{C}",
-}
+from . import variables as var
+from .utils import query
 
 
 def observations(fits_files: List[Path], savefig: Path | None = None):
@@ -127,8 +111,8 @@ def dust_species(
     letters = string.ascii_lowercase
     for index, size in enumerate(sizes):
         name = [names[index].title() + r"$\tablefootmark{" + letters[index] + r"}$"]
-        structure = [LATTICE_STRUCTURE[names[index]].title()]
-        formula = [CHEMICAL_FORMULAS[names[index]]]
+        structure = [var.LATTICE_STRUCTURE[names[index]].title()]
+        formula = [var.CHEMICAL_FORMULAS[names[index]]]
         method = [methods[index]]
         fmax = [fmaxs[index]] if fmaxs is not None else None
 
@@ -296,58 +280,10 @@ def get_date(night: str, nights: pd.DataFrame) -> str | None:
     return key
 
 
-
-if __name__ == "__main__":
-    # data_dir = Path().home() / "Data"
-    # fits_files = list((data_dir / "fitting_data" / "hd142527").glob("*.fits"))
-    # observations(fits_files)
-
-    # sed_fit_dir = data_dir / "opacities" / "silicate_labels_and_weights.npy"
-    # opacities(sed_fit_dir)
-
-from datetime import datetime
-from itertools import permutations
-from pathlib import Path
-from typing import Dict, List
-
-import astropy.units as u
-import numpy as np
-import pandas as pd
-from astropy.coordinates import SkyCoord
-from astropy.io import fits
-from pylatex import Document, NoEscape, Section, Tabular
-
-from .query import query
-from .sort_data import get_dir_name, get_sources
-
-
-def add_array_config(
-    dictionary: Dict[str, str], key: str, value: str
-) -> Dict[str, str]:
-    """Adds all permutations of the configuration to the dictionary."""
-    perms = map(lambda x: "-".join(x), permutations(key.split("-")))
-    perms = ["".join(perm.split("-")) for perm in perms]
-    return {**dictionary, **{perm: value for perm in perms}}
-
-
-ARRAY_CONFIGS = {}
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A0-B2-D0-C1", "AT small")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A1-B2-C1-D0", "AT small")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "K0-G2-D0-J3", "AT medium")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "D0-H0-G1-I1", "AT medium")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "D0-G2-J3-K0", "AT medium")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A0-B5-D0-J3", "AT medium")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A0-G2-J2-J3", "AT large")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A0-G1-J2-J3", "AT large")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A0-G1-J2-K0", "AT large")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A1-G1-K0-I1", "AT large")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A1-G1-K0-J3", "AT large")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "A0-B5-J2-J6", "AT extended")
-ARRAY_CONFIGS = add_array_config(ARRAY_CONFIGS, "U1-U2-U3-U4", "UTs")
-
-
 # TODO: Make a sorting here for the chopped then non-chopped data, etc.
+# Do the same for the new data type and also sort by bands.
 # Also reimplement the arrays (but from the header this time).
+# Chopped, NCcorrCtot, NOCHOP is the progressing of the files themselves
 def source_info(data_dir: Path, sources: List[str]) -> None:
     keys = [
         "source",
@@ -373,10 +309,11 @@ def source_info(data_dir: Path, sources: List[str]) -> None:
     ]
     dfs = []
     sources_sorted = query(sources).sort_values(by="RA")["source"].tolist()
+    breakpoint()
     for source in sources_sorted:
         info = {key: [] for key in keys}
         for fits_file in list((data_dir / get_dir_name(source)).glob("*.fits")):
-            with fits.open(fits_file, "readonly") as hdul:
+            with fits.open(fits_file) as hdul:
                 header = hdul[0].header
 
             info["source"].append(source)
@@ -485,10 +422,15 @@ def fit_results(
 
 
 if __name__ == "__main__":
-    data_dir = Path().home() / "Data"
-    excel_file = data_dir / "survey" / "MATISSE data overview.xlsx"
-    source_dir = data_dir / "reduced_data" / "jozsef_reductions" / "targets5"
+    # data_dir = Path().home() / "Data"
+    # fits_files = list((data_dir / "fitting_data" / "hd142527").glob("*.fits"))
+    # observations(fits_files)
+
+    # sed_fit_dir = data_dir / "opacities" / "silicate_labels_and_weights.npy"
+    # opacities(sed_fit_dir)
+
+    source_dir = Path().home() / "Data" / "reduced"
     df = source_info(
-        data_dir / "reduced" / "targets6",
-        get_sources(excel_file),
+        source_dir,
+        get_sources(source_dir / "MATISSE data overview.xlsx"),
     )

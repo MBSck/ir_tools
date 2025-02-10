@@ -4,7 +4,29 @@ from typing import List, Optional, Tuple
 
 import astropy.units as u
 import numpy as np
+import pandas as pd
 from astropy.io import fits
+from astroquery.simbad import Simbad
+
+from . import variables as var
+
+Simbad.add_votable_fields("sptype", "ra", "dec")
+def query(sources: List[str]) -> pd.DataFrame:
+    """Queries simbad for information on the sources."""
+    results = {key: [] for key in var.FIELDS_TO_KEY}
+    for source in sources:
+        result = Simbad.query_object(source)
+        for field, key in var.FIELDS_TO_KEY.items():
+            if field == "source":
+                results[field].append(source)
+            else:
+                data = result[key].data[0]
+                if key in ["RA", "DEC"]:
+                    data = data.replace(" ", ":")
+
+                results[field].append(data)
+
+    return pd.DataFrame(results)
 
 
 def get_plot_layout(nplots: int) -> Tuple[int, int]:
