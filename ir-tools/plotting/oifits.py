@@ -21,7 +21,7 @@ class Dataset:
     err: List[np.ma.MaskedArray] = field(default_factory=list)
     x: List[np.ndarray] = field(default_factory=list)
     y: List[np.ndarray] = field(default_factory=list)
-    name: List[str] = field(default_factory=list)
+    name: List[List[str]] = field(default_factory=list)
 
     def __iter__(self) -> Iterator:
         for i in range(len(self.header)):
@@ -87,6 +87,11 @@ def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
                             visphi_err = np.ma.masked_array(
                                 card.data["visphierr"], mask=card.data["flag"]
                             )
+                            visphi_name = get_station_names(
+                                card.data["sta_index"],
+                                data.array[-1].data["sta_index"],
+                                data.array[-1].data["sta_name"],
+                            )
                         else:
                             visphi_val = np.ma.masked_invalid(
                                 np.full(data.vis2.val[-1].shape, np.nan)
@@ -94,11 +99,14 @@ def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
                             visphi_err = np.ma.masked_invalid(
                                 np.full(data.vis2.val[-1].shape, np.nan)
                             )
+                            visphi_name = data.vis2.name[-1].copy()
 
+                        data.visphi.header.append(card.header)
                         data.visphi.val.append(visphi_val)
                         data.visphi.err.append(visphi_err)
                         data.visphi.x.append(xcoord)
                         data.visphi.y.append(ycoord)
+                        data.visphi.name.append(visphi_name)
                     elif key == "vis2":
                         val_key, err_key = "vis2data", "vis2err"
                         xcoord, ycoord = card.data["ucoord"], card.data["vcoord"]
@@ -470,3 +478,4 @@ if __name__ == "__main__":
     plot_dir = path / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
     plot_baselines(list(path.glob("*.fits")), "nband", number=True)
+    plot_baselines(list(path.glob("*.fits")), "nband", observable="visphi", number=True)
