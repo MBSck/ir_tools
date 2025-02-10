@@ -1,9 +1,8 @@
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import Iterator, List, Tuple
 
-import astropy.units as u
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,51 +11,121 @@ from matplotlib import colormaps as mcm
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap
 
-from ..utils import get_band
+from ..utils import convert_coords_to_polar, get_band, get_plot_layout
+
+
+@dataclass
+class Dataset:
+    header: List[fits.Header] = field(default_factory=list)
+    val: List[np.ma.MaskedArray] = field(default_factory=list)
+    err: List[np.ma.MaskedArray] = field(default_factory=list)
+    x: List[np.ndarray] = field(default_factory=list)
+    y: List[np.ndarray] = field(default_factory=list)
+    name: List[str] = field(default_factory=list)
+
+    def __iter__(self) -> Iterator:
+        for i in range(len(self.header)):
+            yield self.header[i], self.val[i], self.err[i], self.x[i], self.y[
+                i
+            ], self.name[i]
 
 
 @dataclass
 class Data:
-    nentry: int = 0
+    hduls: List[fits.HDUList] = field(default_factory=list)
     header: List[fits.Header] = field(default_factory=list)
-    wl: List[fits.BinTableHDU] = field(default_factory=list)
+    wl: List[np.ndarray] = field(default_factory=list)
     array: List[fits.BinTableHDU] = field(default_factory=list)
-    vis: List[fits.BinTableHDU] = field(default_factory=list)
-    vis2: List[fits.BinTableHDU] = field(default_factory=list)
-    t3: List[fits.BinTableHDU] = field(default_factory=list)
+    vis2: Dataset = field(default_factory=Dataset)
+    t3: Dataset = field(default_factory=Dataset)
+    vis: Dataset = field(default_factory=Dataset)
+    visphi: Dataset = field(default_factory=Dataset)
+
+    def __len__(self):
+        return len(self.hduls)
 
 
-def read_data(fits_files: List[Path] | Path | fits.HDUList) -> Data:
+def get_station_names(
+    sta_index_pairs: np.ndarray, sta_index: np.ndarray, tel_name: np.ndarray
+):
+    """Gets the station names from the "oi_array" sta indices and telescope names."""
+    sta_to_tel = dict(zip(sta_index, tel_name))
+    return np.array(
+        [
+            "-".join(arr)
+            for arr in np.vectorize(lambda x: sta_to_tel.get(x))(sta_index_pairs)
+        ]
+    )
+
+
+def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
     """Reads the data from the fits files."""
     data = Data()
-    try:
-        fits_files = fits_files if isinstance(fits_files, list) else [fits_files]
-        hduls = [fits.open(fits_file) for fits_file in fits_files]
-    except TypeError:
-        hduls = fits_files
+    fits_files = [fits_files] if isinstance(fits_files, Path) else fits_files
+    for fits_file in fits_files:
+        with fits.open(fits_file) as hdul:
+            data.hduls.append(hdul.copy())
+            data.header.append(hdul[0].header)
+            index = 20 if "grav" in data.header[-1]["INSTRUME"].lower() else None
+            data.wl.append(hdul["oi_wavelength", index].data["eff_wave"])
+            for key in ["array", "vis2", "vis", "t3"]:
+                if key == "array":
+                    data.array.append(hdul[f"oi_{key}"].copy())
+                else:
+                    # TODO: Finish this similar to the way it done for visphi
+                    if key == "vis" and f"oi_{key}" not in hdul:
+                        ...
 
-    for hdul in hduls:
-        data.nentry += 1
-        data.header.append(hdul[0].header.copy())
-        index = 20 if "grav" in data.header[-1]["INSTRUME"].lower() else None
-        data.wl.append(
-            (hdul["oi_wavelength", index].data["eff_wave"].copy() * u.m).to(u.um)
-        )
-        for key in ["array", "vis", "vis2", "t3"]:
-            if key == "array":
-                card = hdul[f"oi_{key}"]
-            else:
-                card = hdul[f"oi_{key}", index]
-            getattr(data, key).append(card.copy())
+                    card = hdul[f"oi_{key}", index]
+                    if key == "vis":
+                        val_key, err_key = "visamp", "visamperr"
+                        xcoord, ycoord = card.data["ucoord"], card.data["vcoord"]
+                        if "VISPHI" in card.columns.names:
+                            visphi_val = np.ma.masked_array(
+                                card.data["visphi"], mask=card.data["flag"]
+                            )
+                            visphi_err = np.ma.masked_array(
+                                card.data["visphierr"], mask=card.data["flag"]
+                            )
+                        else:
+                            visphi_val = np.ma.masked_invalid(
+                                np.full(data.vis2.val[-1].shape, np.nan)
+                            )
+                            visphi_err = np.ma.masked_invalid(
+                                np.full(data.vis2.val[-1].shape, np.nan)
+                            )
 
-    [hdul.close() for hdul in hduls]
+                        data.visphi.val.append(visphi_val)
+                        data.visphi.err.append(visphi_err)
+                        data.visphi.x.append(xcoord)
+                        data.visphi.y.append(ycoord)
+                    elif key == "vis2":
+                        val_key, err_key = "vis2data", "vis2err"
+                        xcoord, ycoord = card.data["ucoord"], card.data["vcoord"]
+                    elif key == "t3":
+                        val_key, err_key = "t3phi", "t3phierr"
+                        x1coord, x2coord = card.data["u1coord"], card.data["u2coord"]
+                        y1coord, y2coord = card.data["v1coord"], card.data["v2coord"]
+                        xcoord = np.array([x1coord, x2coord, x1coord + x2coord])
+                        ycoord = np.array([y1coord, y2coord, y1coord + y2coord])
+
+                    getattr(data, key).header.append(card.header)
+                    getattr(data, key).val.append(
+                        np.ma.masked_array(card.data[val_key], mask=card.data["flag"])
+                    )
+                    getattr(data, key).err.append(
+                        np.ma.masked_array(card.data[err_key], mask=card.data["flag"])
+                    )
+                    getattr(data, key).x.append(xcoord)
+                    getattr(data, key).y.append(ycoord)
+                    getattr(data, key).name.append(
+                        get_station_names(
+                            card.data["sta_index"],
+                            data.array[-1].data["sta_index"],
+                            data.array[-1].data["sta_name"],
+                        )
+                    )
     return data
-
-
-def get_unit(self, header: str, sub_header: str) -> str:
-    """Fetches the unit of a header by the sub header's name."""
-    unit = getattr(self, header)[sub_header.upper()].unit
-    return str(unit) if unit is not None else "a.u."
 
 
 def convert_style_to_colormap(style: str) -> ListedColormap:
@@ -80,15 +149,14 @@ def get_colorlist(colormap: str, ncolors: int | None) -> List[str]:
     return [get_colormap(colormap)(i) for i in range(ncolors)]
 
 
-# TODO: Rewrite this function to make it easier to read and change -> Also for the readin of the data
-# maybe move it to the plot section
-# TODO: Make it so that there is always the max amount if the max is reached
-# TODO: Rewrite this with just hduls and not the rest
+# TODO: Implement the t3 for this function
+# TODO: Re-implement model overplotting for this function. Shouldn't be too hard
+# TODO: Include this in the plot class of this module
 def plot_baselines(
-    hduls: List[fits.HDUList],
+    fits_files: List[Path] | Path,
     band: str,
     observable: str = "vis",
-    nplots: int = 12,
+    max_plots: int = 20,
     number: bool = False,
     save_dir: Path | None = None,
 ) -> None:
@@ -96,114 +164,89 @@ def plot_baselines(
 
     Parameters
     ----------
-    hduls : list of fits.HDUList
-        A list containing the read in fits files.
+    fits_files : list of pathlib.Path or pathlib.Path
+        A list of fits files or a fits file to read the data from.
     band : str
         The band to plot the data for.
     observable : str, optional
         The observable to plot. "vis", "visphi", "t3" and "vis2" are available.
-    nplots : int, optional
-        The number of plots to show.
+    max_plots : int, optional
+        The maximal number of plots to show.
     number : bool, optional
         If the plots should be numbered.
     save_dir : Path, optional
         The save directory for the plots.
     """
-    overplot_model = observable != "visphi"
     save_dir = Path.cwd() if save_dir is None else save_dir
-    bands = np.array(list(map(get_band, wavelength_range)))
-    if band in ["lband", "mband"]:
-        band_ind = np.where((bands == "lband") | (bands == "mband"))[0]
-    else:
-        band_ind = np.where(bands == band)[0]
+    band = "lmband" if band in ["lband", "mband"] else band
+    data = read_data(fits_files)
 
-    data = getattr(OPTIONS.data, "vis" if observable in ["vis", "visphi"] else observable)
-    baseline_ind = np.where(~np.any(data.value[band_ind].mask, axis=0))[0]
-    if observable in ["vis", "visphi"]:
-        baselines, psi = compute_effective_baselines(data.ucoord, data.vcoord)
-        names = data.baselines
-    else:
-        baselines, psi = compute_effective_baselines(
-            data.u123coord, data.v123coord, longest=True
-        )
-        names = data.triangles
+    wls, values, errors, baselines, psis, names = [], [], [], [], [], []
+    for index, (_, val, err, x, y, name) in enumerate(getattr(data, observable)):
+        band_dataset = get_band((data.wl[index][0], data.wl[index][-1]))
+        if (band_dataset in ["lband", "mband"] and not band == "lmband") or (
+            band_dataset != band
+        ):
+            continue
 
-    baselines = baselines[1:][baseline_ind]
-    psi = psi.to(u.deg)[1:][baseline_ind]
+        wls.extend([data.wl[index] for _ in range(len(val))])
+        baseline, psi = convert_coords_to_polar(x, y, deg=True)
+        values.extend(val)
+        errors.extend(err)
+        baselines.extend(baseline)
+        psis.extend(psi)
+        names.extend(map(lambda x: f"{x}, {index}", name))
 
-    names = [names[i] for i in baseline_ind]
-    wl_data = [data.raw_wavelengths[i] for i in baseline_ind]
+    nplots = max_plots if len(values) > max_plots else len(values)
+    baseline_ind = np.argsort(baselines)
+    wls, values, errors, baselines, psis, names = (
+        [wls[i] for i in baseline_ind],
+        [values[i] for i in baseline_ind],
+        [errors[i] for i in baseline_ind],
+        np.array(baselines)[baseline_ind],
+        np.array(psis)[baseline_ind],
+        np.array(names)[baseline_ind],
+    )
 
-    if observable == "visphi":
-        raw_value = [data.raw_visphi[i] for i in baseline_ind]
-        raw_err = [data.raw_visphierr[i] for i in baseline_ind]
-    else:
-        raw_value = [data.raw_value[i] for i in baseline_ind]
-        raw_err = [data.raw_err[i] for i in baseline_ind]
+    # TODO: Check if this works for all cases
+    percentile_ind = np.percentile(
+        np.arange(len(values)), np.linspace(0, 100, nplots)
+    ).astype(int)
+    wls, values, errors, baselines, psis, names = (
+        [wls[i] for i in percentile_ind],
+        [values[i] for i in percentile_ind],
+        [errors[i] for i in percentile_ind],
+        baselines[percentile_ind],
+        psis[percentile_ind],
+        names[percentile_ind],
+    )
 
-    # TODO: Switch the ranges here
-    wavelength_range = wavelength_range[band_ind]
-    wavelength = np.linspace(wl_data[0][0], wl_data[0][-1], OPTIONS.plot.dim)
-
-    if overplot_model:
-        _, vis_model, t3_model = compute_observables(
-            components, wavelength=wavelength * u.um
-        )
-        model_data = vis_model if observable == "vis" else t3_model
-        model_data = model_data[:, baseline_ind]
-
-    percentiles = np.linspace(0, 100, nplots)
-    percentile_ind = percentile_indices(baselines, percentiles)
-    baselines, psi = baselines[percentile_ind], psi[percentile_ind]
-    wl_data = [wl_data[i] for i in percentile_ind]
-    raw_value = [raw_value[i] for i in percentile_ind]
-    raw_err = [raw_err[i] for i in percentile_ind]
-    names = [names[i] for i in percentile_ind]
-
+    rows, cols = get_plot_layout(nplots)
     fig, axarr = plt.subplots(
-        *get_best_plot_arrangement(nplots) * 4,
-        figsize=figsize,
-        facecolor=OPTIONS.plot.color.background,
+        rows,
+        cols,
+        figsize=(cols * 4, rows * 4),
         sharex=True,
         constrained_layout=True,
     )
-    axarr = axarr.flatten()
-    if observable == "vis":
-        y_label = r"$F_{\nu,\,\mathrm{corr.}}$ (Jy)"
-        ylims = [0, None]
-    elif observable == "visphi":
-        y_label = r"$\phi_{\mathrm{diff.}}$ ($^\circ$)"
-        ylims = None
-    elif observable == "t3":
-        y_label = r"$\phi_{\mathrm{cl.}}$ ($^\circ$)"
-        ylims = None
-    else:
-        y_label = "$V^2$ (a.u.)"
-        ylims = [0, 1]
 
-    for index, (baseline, baseline_angle) in enumerate(zip(baselines, psi)):
-        ax = axarr[index]
-        set_axes_color(ax, OPTIONS.plot.color.background)
-        if overplot_model:
-            ax.plot(
-                wavelength,
-                model_data[:, percentile_ind[index]],
-                label="Model",
-            )
-        label = rf"{names[index]}, B={baseline.value:.2f} m, $\phi$={baseline_angle.value:.2f}$^\circ$"
+    ymin, ymax = 0, 0
+    for index, (ax, b, psi) in enumerate(zip(axarr.flat, baselines, psis)):
+        ymax = np.max(values[index]) if np.max(values[index]) > ymax else ymax
+        ymin = np.min(values[index]) if np.min(values[index]) < ymin else ymin
+        label = rf"{names[index]}, B={b:.2f} m, $\psi$={psi:.2f}$^\circ$"
         line = ax.plot(
-            wl_data[index],
-            raw_value[index],
+            wls[index],
+            values[index],
             label=label,
         )
         ax.fill_between(
-            wl_data[index],
-            raw_value[index] + raw_err[index],
-            raw_value[index] - raw_err[index],
+            wls[index],
+            values[index] + errors[index],
+            values[index] - errors[index],
             color=line[0].get_color(),
             alpha=0.5,
         )
-        ax.set_ylim(ylims)
         if number:
             ax.text(
                 0.05,
@@ -217,11 +260,24 @@ def plot_baselines(
             )
         ax.legend()
 
-    [ax.remove() for index, ax in enumerate(axarr.flatten()) if index >= nplots]
-    fig.subplots_adjust(left=0.2, bottom=0.2)
     # TODO: Reimplement this
     # fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
     # fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
+    if observable == "vis":
+        y_label = r"$F_{\nu,\,\mathrm{corr.}}$ (Jy)"
+        ylims = [0, ymax + ymax * 0.15]
+    elif observable == "visphi":
+        y_label = r"$\phi_{\mathrm{diff.}}$ ($^\circ$)"
+        ylims = [ymin - ymin * 0.25, ymax + ymax * 0.15]
+    elif observable == "t3":
+        y_label = r"$\phi_{\mathrm{cl.}}$ ($^\circ$)"
+        ylims = [ymin - ymin * 0.25, ymax + ymax * 0.15]
+    else:
+        y_label = "$V^2$ (a.u.)"
+        ylims = [0, 1]
+    [ax.set_ylim(ylims) for ax in axarr.flat]
+    [ax.remove() for index, ax in enumerate(axarr.flat) if index >= nplots]
+    fig.subplots_adjust(left=0.2, bottom=0.2)
     plt.savefig(save_dir / f"{observable}_{band}.pdf", format="pdf")
     plt.close()
 
@@ -229,10 +285,10 @@ def plot_baselines(
 def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
     """Plots the uv coverage."""
     handles = []
-    colors = get_colorlist("tab20", data.nentry)
+    colors = get_colorlist("tab20", len(data))
     if index is not None:
-        ucoords = data.vis2[index].data["ucoord"]
-        vcoords = data.vis2[index].data["vcoord"]
+        ucoords = data.vis2[index].data["xcoord"]
+        vcoords = data.vis2[index].data["ycoord"]
         color = colors[index]
         ax.plot(ucoords, vcoords, "x", markersize=6, markeredgewidth=2, color=color)
         ax.plot(-ucoords, -vcoords, "x", markersize=6, markeredgewidth=2, color=color)
@@ -413,5 +469,4 @@ if __name__ == "__main__":
     path = Path().home() / "Data" / "fitting" / "hd142527"
     plot_dir = path / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
-    breakpoint()
-
+    plot_baselines(list(path.glob("*.fits")), "nband", number=True)

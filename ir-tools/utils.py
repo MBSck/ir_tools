@@ -51,8 +51,6 @@ def get_band(
                 return 2.6e-6, 3.99e-6
             case "mband":
                 return 4e-6, 6e-6
-            case "lmband":
-                return 2.6e-6, 6e-6
             case "nband":
                 return 7.5e-6, 16e-6
             case _:
@@ -70,8 +68,6 @@ def get_band(
                 return "lband"
             case (wl_min, wl_max) if 4e-6 < wl_min and wl_max < 6e-6:
                 return "mband"
-            case (wl_min, wl_max) if 2.6e-6 < wl_min and wl_max < 6e-6:
-                return "lmband"
             case (wl_min, wl_max) if 7.5e-6 < wl_min and wl_max < 16e-6:
                 return "nband"
             case _:
@@ -92,6 +88,7 @@ def convert_coords_to_polar(
     y: float | np.ndarray,
     cinc: float | None = None,
     pa: float | None = None,
+    deg: bool = False,
 ) -> Tuple[float | np.ndarray, float | np.ndarray]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
@@ -106,13 +103,16 @@ def convert_coords_to_polar(
         The cosine of the inclination.
     pa: float, optional
         The positional angle of the object (in degree).
+    deg : bool, optional
+        If True, the angle will be returned in degree.
 
     Returns
     -------
-    distance : astropy.units.Quantity
+    distance : float or numpy.ndarray
         Returns the distance to the point.
-    angle : astropy.units.rad
-        Returns the angle of the point.
+    angle : float or numpy.ndarray
+        Returns the angle of the point (radians or degree
+        if "deg=True").
     """
     if pa is not None:
         pa = pa / 180 * np.pi
@@ -124,7 +124,10 @@ def convert_coords_to_polar(
     if cinc is not None:
         xr *= cinc
 
-    return np.hypot(xr, yr), np.arctan2(xr, yr)
+    theta = np.arctan2(xr, yr)
+    if deg:
+        theta = theta / np.pi * 180
+    return np.hypot(xr, yr), theta
 
 
 def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
