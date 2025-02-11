@@ -137,7 +137,7 @@ def convert_coords_to_polar(
         if "deg=True").
     """
     if pa is not None:
-        pa = pa / 180 * np.pi
+        pa = np.deg2rad(pa)
         xr = x * np.cos(pa) - y * np.sin(pa)
         yr = x * np.sin(pa) + y * np.cos(pa)
     else:
@@ -147,9 +147,8 @@ def convert_coords_to_polar(
         xr *= cinc
 
     theta = np.arctan2(xr, yr)
-    if deg:
-        theta = theta / np.pi * 180
-    return np.hypot(xr, yr), theta
+    return np.hypot(xr, yr), np.rad2deg(theta) if deg else theta
+
 
 
 def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
