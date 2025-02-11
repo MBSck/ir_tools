@@ -20,7 +20,6 @@ from ppdmod.plot import (
     plot_overview,
 )
 from ppdmod.utils import (
-    # create_adaptive_bins,
     windowed_linspace,
 )
 
@@ -34,20 +33,16 @@ def ptform():
     pass
 
 
-# TODO: Fix the chi square here to get correct fit values
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    path = data_dir / "results" / "disc" / "2025-02-05"
-    path /= "baseline_fix"
+    path = data_dir / "results" / "disc" / "2025-02-11"
+    path /= "all_data"
 
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
     assets_dir.mkdir(exist_ok=True, parents=True)
 
     fits_dir = data_dir / "fitting" / "hd142527"
-    # nband_wavelengths, nband_binning_windows = create_adaptive_bins(
-    #     [8.6, 12.3], [9.2, 11.9], 0.2, 0.65
-    # )
     wavelengths = {
         "hband": [1.7] * u.um,
         "kband": [2.15] * u.um,
@@ -56,7 +51,6 @@ if __name__ == "__main__":
         "nband": windowed_linspace(8.25, 12.75, OPTIONS.data.binning.nband.value)
         * u.um,
     }
-    # OPTIONS.data.binning.nband = nband_binning_windows * u.um
     fits_files = list((fits_dir).glob("*fits"))
 
     OPTIONS.fit.fitter = "dynesty"
@@ -98,7 +92,12 @@ if __name__ == "__main__":
     print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
 
     plot_format = "pdf"
-    plot_corner(sampler, labels, units, savefig=(plot_dir / f"corner.{plot_format}"), discard=1000)
+    plot_corner(
+        sampler,
+        labels,
+        units,
+        savefig=(plot_dir / f"corner.{plot_format}"),
+    )
     plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
     plot_overview(
         bands=["nband"],
@@ -130,10 +129,6 @@ if __name__ == "__main__":
         zoom=zoom,
         savefig=plot_dir / "image_lband.png",
     )
-
-    # OPTIONS.data.binning.nband = (
-    #     np.interp(10.5, nband_wavelengths, nband_binning_windows) * u.um
-    # )
     plot_components(
         components,
         dim,
@@ -143,9 +138,6 @@ if __name__ == "__main__":
         zoom=zoom,
         savefig=plot_dir / "image_nband.png",
     )
-    # plot_intermediate_products(
-    #     dim, wavelengths, components, component_labels, save_dir=plot_dir
-    # )
     best_fit_parameters(
         labels,
         units,
@@ -165,9 +157,10 @@ if __name__ == "__main__":
         fit_method=OPTIONS.fit.fitter,
     )
 
-    number = True
-    max_plots = 20
-    for band in ["hband", "kband", "lband", "nband"]:
+    max_plots, number = 20, True
+    # bands = ["hband", "kband", "lband", "nband"]
+    bands = ["nband"]
+    for band in bands:
         plot_baselines(
             fits_files,
             band,
@@ -179,8 +172,16 @@ if __name__ == "__main__":
         plot_baselines(
             fits_files,
             band,
-            "t3",
+            "visphi",
             max_plots=max_plots,
-            number=False,
+            number=number,
             save_dir=plot_dir,
         )
+        # plot_baselines(
+        #     fits_files,
+        #     band,
+        #     "t3",
+        #     max_plots=max_plots,
+        #     number=False,
+        #     save_dir=plot_dir,
+        # )

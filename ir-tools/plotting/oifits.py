@@ -10,6 +10,7 @@ from astropy.io import fits
 from matplotlib import colormaps as mcm
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap
+from tqdm import tqdm
 
 from ..utils import convert_coords_to_polar, get_band, get_plot_layout
 
@@ -36,6 +37,7 @@ class Data:
     header: List[fits.Header] = field(default_factory=list)
     wl: List[np.ndarray] = field(default_factory=list)
     array: List[fits.BinTableHDU] = field(default_factory=list)
+    flux: Dataset = field(default_factory=Dataset)
     vis2: Dataset = field(default_factory=Dataset)
     t3: Dataset = field(default_factory=Dataset)
     vis: Dataset = field(default_factory=Dataset)
@@ -68,7 +70,7 @@ def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
             data.header.append(hdul[0].header)
             index = 20 if "grav" in data.header[-1]["INSTRUME"].lower() else None
             data.wl.append(hdul["oi_wavelength", index].data["eff_wave"])
-            for key in ["array", "vis2", "vis", "t3"]:
+            for key in ["array", "flux", "vis2", "vis", "t3"]:
                 if key == "array":
                     data.array.append(hdul[f"oi_{key}"].copy())
                 else:
@@ -77,7 +79,11 @@ def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
                         ...
 
                     card = hdul[f"oi_{key}", index]
-                    if key == "vis":
+                    if key == "flux":
+                        val_key = "fluxdata" if "FLUXDATA" in card.columns.names else "flux"
+                        err_key = "fluxerr"
+                        xcoord, ycoord = [], []
+                    elif key == "vis":
                         val_key, err_key = "visamp", "visamperr"
                         xcoord, ycoord = card.data["ucoord"], card.data["vcoord"]
                         if "VISPHI" in card.columns.names:
@@ -295,31 +301,28 @@ def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
     handles = []
     colors = get_colorlist("tab20", len(data))
     if index is not None:
-        ucoords = data.vis2[index].data["xcoord"]
-        vcoords = data.vis2[index].data["ycoord"]
         color = colors[index]
+        ucoords, vcoords = data.vis2.x[index], data.vis2.y[index]
         ax.plot(ucoords, vcoords, "x", markersize=6, markeredgewidth=2, color=color)
         ax.plot(-ucoords, -vcoords, "x", markersize=6, markeredgewidth=2, color=color)
     else:
         ucoords, vcoords = [], []
-        for file_idx, (header, vis2) in enumerate(zip(data.header, data.vis2)):
+        for file_idx, (*_, x, y, _) in enumerate(data.vis2):
             color = colors[file_idx]
-            file_ucoords = vis2.data["ucoord"]
-            file_vcoords = vis2.data["vcoord"]
-            ucoords.extend(file_ucoords)
-            vcoords.extend(file_vcoords)
+            ucoords.extend(x)
+            vcoords.extend(y)
 
             ax.plot(
-                file_ucoords,
-                file_vcoords,
+                x,
+                y,
                 "x",
                 markersize=6,
                 markeredgewidth=2,
                 color=color,
             )
             ax.plot(
-                -file_ucoords,
-                -file_vcoords,
+                -x,
+                -y,
                 "x",
                 markersize=6,
                 markeredgewidth=2,
@@ -332,7 +335,7 @@ def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
                     color=color,
                     marker="X",
                     linestyle="None",
-                    label=header["date-obs"].split("T")[0],
+                    label=data.header[file_idx]["date-obs"].split("T")[0],
                 )
             )
 
@@ -360,62 +363,52 @@ def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
     ax.set_ylabel(ylabel)
 
 
-def plot_data(
-    ax: Axes, x: np.ndarray, y: np.ndarray, yerr: np.ndarray, flag: np.ndarray
-) -> Axes:
+def plot_data(ax: Axes, x: np.ndarray, ys: np.ndarray, yerrs: np.ndarray) -> Axes:
     """Plots some data with errors."""
-    ys = np.ma.masked_array(y, mask=flag)
-    yerrs = np.ma.masked_array(yerr, mask=flag)
     for y, yerr in zip(ys, yerrs):
-        ax.plot(x.value, y)
-        ax.fill_between(x.value, y + yerr, y - yerr, alpha=0.2)
+        ax.plot(x, y)
+        ax.fill_between(x, y + yerr, y - yerr, alpha=0.2)
     return ax
 
 
 # TODO: Finish this here
 # TODO: Move all this here to paper
-def plot_flux(ax: Axes, data: Data, index: int | None = None) -> Axes:
+def plot_flux(ax: Axes, data: Data, index: int) -> Axes:
     """Plots the flux."""
-    card = hdul["oi_flux", index]
-    key = "fluxdata" if "FLUXDATA" in card.columns.names else "flux"
-    ax = plot_data(ax, x, card.data[key], card.data["fluxerr"], card.data["flag"])
+    ax = plot_data(ax, data.wl[index], data.flux.val[index], data.flux.err[index])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$F_{\nu}$ $\left(\mathrm{Jy}\right)$")
     return ax
 
 
-def plot_vis(ax: Axes, data: Data, index: int | None = None) -> Axes:
+def plot_vis(ax: Axes, data: Data, index: int) -> Axes:
     """Plots the visibility or the correlated flux."""
-    x, dataset = data.wl[index], data.vis[index].data
-    plot_data(ax, x, dataset["visamp"], dataset["visamperr"], dataset["flag"])
+    plot_data(ax, data.wl[index], data.vis.val[index], data.vis.err[index])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$F_{\nu,\,\mathrm{corr}}$ $\left(\mathrm{Jy}\right)$")
     return ax
 
 
-def plot_visphi(ax: Axes, data: Data, index: int | None = None) -> Axes:
+def plot_visphi(ax: Axes, data: Data, index: int) -> Axes:
     """Plots the differential phases."""
-    x, dataset = data.wl[index], data.vis[index].data
-    plot_data(ax, x, dataset["visphi"], dataset["visphierr"], dataset["flag"])
+    plot_data(ax, data.wl[index], data.visphi.val[index], data.visphi.err[index])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$\phi_{\mathrm{diff}}$ $\left(^\circ\right)$")
     return ax
 
 
-def plot_vis2(ax: Axes, data: Data, index: int | None = None) -> Axes:
+def plot_vis2(ax: Axes, data: Data, index: int) -> Axes:
     """Plots the squared visibility."""
-    x, dataset = data.wl[index], data.vis2[index].data
-    plot_data(ax, x, dataset["vis2data"], dataset["vis2err"], dataset["flag"])
+    plot_data(ax, data.wl[index], data.vis2.val[index], data.vis2.err[index])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$V^{2}$ (a.u.)")
     ax.set_ylim((0, None) if ax.get_ylim()[1] < 1 else (0, 1))
     return ax
 
 
-def plot_t3(ax: Axes, data: Data, index: int | None = None) -> Axes:
+def plot_t3(ax: Axes, data: Data, index: int) -> Axes:
     """Plots the closure phases."""
-    x, dataset = data.wl[index], data.t3[index].data
-    plot_data(ax, x, dataset["t3phi"], dataset["t3phierr"], dataset["flag"])
+    plot_data(ax, data.wl[index], data.t3.val[index], data.t3.err[index])
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$\phi_{\mathrm{cp}}$ $\left(^\circ\right)$")
     return ax
@@ -441,7 +434,7 @@ def plot(
         plots = ["uv", "flux", "t3", "vis2", "vis", "visphi"]
 
     if kind == "collage":
-        cols, rows = len(plots), int(np.ceil(len(data.vis) / len(plots)))
+        cols, rows = len(plots), len(data)
         figsize = (cols * cell_width, rows * cell_width)
         _, axarr = plt.subplots(
             rows, cols, figsize=figsize, sharex=True, constrained_layout=True
@@ -458,7 +451,7 @@ def plot(
         )
         axarr = [axarr] if not isinstance(axarr, np.ndarray) else axarr
         for ax, plot in zip(axarr, plots):
-            getattr(module, f"plot_{plot}")(ax, data)
+            getattr(module, f"plot_{plot}")(ax, data, -1)
 
     # TODO: Implement the individual plots again
     else:
@@ -474,8 +467,13 @@ def plot(
 
 
 if __name__ == "__main__":
-    path = Path().home() / "Data" / "fitting" / "hd142527"
+    path = Path().home() / "Data" / "fitting" / "hd142666"
     plot_dir = path / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
-    plot_baselines(list(path.glob("*.fits")), "nband", number=True)
-    plot_baselines(list(path.glob("*.fits")), "nband", observable="visphi", number=True)
+
+    fits_files = list((path).glob("HD_*.fits"))
+    for fits_file in tqdm(fits_files, desc="Plotting oifits..."):
+        plot(fits_file, kind="combined", plots=["flux", "vis", "visphi", "t3"], save_dir=plot_dir / f"{fits_file.stem}.png")
+
+    # plot_baselines(list(path.glob("*.fits")), "nband", number=True)
+    # plot_baselines(list(path.glob("*.fits")), "nband", observable="visphi", number=True)
