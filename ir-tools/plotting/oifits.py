@@ -80,7 +80,9 @@ def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
 
                     card = hdul[f"oi_{key}", index]
                     if key == "flux":
-                        val_key = "fluxdata" if "FLUXDATA" in card.columns.names else "flux"
+                        val_key = (
+                            "fluxdata" if "FLUXDATA" in card.columns.names else "flux"
+                        )
                         err_key = "fluxerr"
                         xcoord, ycoord = [], []
                     elif key == "vis":
@@ -467,13 +469,21 @@ def plot(
 
 
 if __name__ == "__main__":
-    path = Path().home() / "Data" / "fitting" / "hd142666"
+    path = Path().home() / "Data" / "fitting" / "hd142527"
     plot_dir = path / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
 
-    fits_files = list((path).glob("HD_*.fits"))
-    for fits_file in tqdm(fits_files, desc="Plotting oifits..."):
-        plot(fits_file, kind="combined", plots=["flux", "vis", "visphi", "t3"], save_dir=plot_dir / f"{fits_file.stem}.png")
+    fits_files = list(path.glob("*U1*_N_*fits"))
+    plot(
+        fits_files,
+        kind="collage",
+        plots=["flux", "vis", "visphi", "t3"],
+        save_dir=plot_dir / "reflagged_data_nband.png",
+    )
+
+    # fits_files = list((path).glob("HD_*.fits"))
+    # for fits_file in tqdm(fits_files, desc="Plotting oifits..."):
+    #     plot(fits_file, kind="combined", plots=["flux", "vis", "visphi", "t3"], save_dir=plot_dir / f"{fits_file.stem}.png")
 
     # plot_baselines(list(path.glob("*.fits")), "nband", number=True)
     # plot_baselines(list(path.glob("*.fits")), "nband", observable="visphi", number=True)
