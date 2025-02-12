@@ -292,12 +292,10 @@ def source_info(
         if row["band"] == "LM":
             if row["chopped"]:
                 return 0
-            elif row["nc_corr_ctot"]:
-                return 1
             else:
-                return 3
+                return 1
         else:
-            return 4
+            return 2
 
     dfs = []
     sources_sorted = list(
@@ -307,8 +305,12 @@ def source_info(
         info = {key: [] for key in var.SOURCE_INFO_KEYS}
         source_dir = data_dir / source / "matisse" / "non_treated"
         for fits_file in list(source_dir.glob("*.fits")):
+            if "NCcorrCtot" in fits_file.stem:
+                continue
+
             with fits.open(fits_file) as hdul:
                 header = hdul[0].header
+                array = var.ARRAY_CONFIGS.get("-".join(hdul["oi_array"].data["sta_name"]), "other")
 
             info["source"].append(source)
             tpl_start = header["HIERARCH ESO TPL START"]
@@ -333,7 +335,7 @@ def source_info(
 
             cal_name, cal_ra, cal_dec = "", 0, 0
             cal_diam, cal_diam_err, cal_seeing = "", "", ""
-            cal_tau0, cal_jsdc = "", False
+            cal_tau0 = ""
             if "HIERARCH ESO PRO CAL NAME" in header:
                 cal_name = header["HIERARCH ESO PRO CAL NAME"]
                 cal_ra = header["HIERARCH ESO PRO CAL RA"]
@@ -342,9 +344,6 @@ def source_info(
                 cal_diam_err = header["HIERARCH ESO PRO CAL DB ERRDIAM"]
                 cal_seeing = np.round(header["HIERARCH ESO PRO CAL FWHM"], 1)
                 cal_tau0 = np.round(header["HIERARCH ESO PRO CAL TAU0"] * 1e3, 1)
-                cal_jsdc = (
-                    header["HIERARCH ESO PRO CAL DB DBNAME"] == "calib_spec_db_v10.fits"
-                )
 
             if cal_name.startswith("HD"):
                 cal_name = cal_name.replace("_", "")
@@ -358,14 +357,11 @@ def source_info(
             info["cal_diam_err"].append(cal_diam_err)
             info["cal_seeing"].append(cal_seeing)
             info["cal_tau0"].append(cal_tau0)
-            info["cal_jdsc"].append(cal_jsdc)
+            info["file_name"].append(fits_file.stem)
 
-            # config = re.search(r"[A-Z]\d[A-Z]\d[A-Z]\d[A-Z]\d", fits_file.name)
-            # config = ARRAY_CONFIGS[config.group()] if config else "other"
-            info["array"].append("")
+            info["array"].append(array)
             info["band"].append(header["HIERARCH ESO DET NAME"].split("-")[1])
             info["chopped"].append("CHOPPED" in fits_file.stem)
-            info["nc_corr_ctot"].append("NCcorrCtot" in fits_file.stem)
 
         source_df = pd.DataFrame(info)
         source_df["tpl_start"] = pd.to_datetime(source_df["tpl_start"])
