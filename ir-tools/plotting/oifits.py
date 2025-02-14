@@ -36,7 +36,9 @@ class Dataset:
 
         dataset = Dataset()
         for content in fields(self):
-            setattr(dataset, content.name, [getattr(self, content.name)[i] for i in index])
+            setattr(
+                dataset, content.name, [getattr(self, content.name)[i] for i in index]
+            )
 
         return dataset
 
@@ -75,7 +77,9 @@ class Data:
             if isinstance(getattr(self, content.name), Dataset):
                 setattr(data, content.name, getattr(self, content.name)[index])
             else:
-                setattr(data, content.name, [getattr(self, content.name)[i] for i in index])
+                setattr(
+                    data, content.name, [getattr(self, content.name)[i] for i in index]
+                )
 
         return data
 
@@ -187,7 +191,19 @@ def filter_data(data: Data, **kwargs) -> Data:
     """
     for key, value in kwargs.items():
         if "band" in key:
-            ...
+            if value == "all":
+                continue
+
+            if not isinstance(value, list):
+                value = [value]
+
+            indices = []
+            for index, wl in enumerate(data.wl):
+                band = get_band((wl[0], wl[-1]))
+                if band in value:
+                    indices.append(index)
+
+            data = data[indices]
 
     return data
 
@@ -264,10 +280,8 @@ def plot_t3(ax: Axes, data: Data, index: int) -> Axes:
     return ax
 
 
-# TODO: Implement the t3 for this function
 # TODO: Re-implement model overplotting for this function. Shouldn't be too hard
 # TODO: Include this in the plot class of this module
-# TODO: Make the band here flow into the read_data to only get the right indices somehow
 def plot_baselines(
     fits_files: List[Path] | Path,
     band: str,
@@ -282,7 +296,7 @@ def plot_baselines(
     ----------
     fits_files : list of pathlib.Path or pathlib.Path
         A list of fits files or a fits file to read the data from.
-    band : str
+    bands : str
         The band to plot the data for.
     observable : str, optional
         The observable to plot. "vis", "visphi", "t3" and "vis2" are available.
@@ -294,19 +308,12 @@ def plot_baselines(
         The save directory for the plots.
     """
     save_dir = Path.cwd() if save_dir is None else save_dir
-    band = "lmband" if band in ["lband", "mband"] else band
-    data = read_data(fits_files)
+    data = filter_data(read_data(fits_files), bands=band)
 
-    wls, labels, values, errors, baselines, psis, names = [], [], [], [], [], [], []
+    wls, stations, labels = [], [], []
+    values, errors, baselines, psis = [], [], [], []
     for index, (_, val, err, x, y, name) in enumerate(getattr(data, observable)):
-        band_dataset = get_band((data.wl[index][0], data.wl[index][-1]))
-        if (band_dataset in ["lband", "mband"] and not band == "lmband") or (
-            band_dataset != band
-        ):
-            continue
-
         wls.extend([data.wl[index] for _ in range(len(val))])
-        labels.extend([data.label[index] for _ in range(len(val))])
         baseline, psi = convert_coords_to_polar(x, y, deg=True)
         if observable == "t3":
             longest_ind = (
@@ -315,36 +322,36 @@ def plot_baselines(
             )
             baseline, psi = baseline.T[longest_ind], psi.T[longest_ind]
 
+        labels.extend([f"{data.label[index]}.{i+1}" for i in np.arange(baseline.size)])
         values.extend(val)
         errors.extend(err)
         baselines.extend(baseline)
         psis.extend(psi)
-        names.extend(name)
+        stations.extend(name)
 
     nplots = max_plots if len(values) > max_plots else len(values)
     baseline_ind = np.argsort(baselines)
-    wls, labels, values, errors, baselines, psis, names = (
+    wls, labels, values, errors, baselines, psis, stations = (
         [wls[i] for i in baseline_ind],
         [labels[i] for i in baseline_ind],
         [values[i] for i in baseline_ind],
         [errors[i] for i in baseline_ind],
         np.array(baselines)[baseline_ind],
         np.array(psis)[baseline_ind],
-        np.array(names)[baseline_ind],
+        np.array(stations)[baseline_ind],
     )
 
-    # TODO: Check if this works for all cases
     percentile_ind = np.percentile(
         np.arange(len(values)), np.linspace(0, 100, nplots)
     ).astype(int)
-    wls, labels, values, errors, baselines, psis, names = (
+    wls, labels, values, errors, baselines, psis, stations = (
         [wls[i] for i in percentile_ind],
         [labels[i] for i in percentile_ind],
         [values[i] for i in percentile_ind],
         [errors[i] for i in percentile_ind],
         baselines[percentile_ind],
         psis[percentile_ind],
-        names[percentile_ind],
+        stations[percentile_ind],
     )
 
     rows, cols = get_plot_layout(nplots)
@@ -363,7 +370,7 @@ def plot_baselines(
         line = ax.plot(
             wls[index],
             values[index],
-            label=rf"{names[index]}, B={b:.2f} m, $\psi$={psi:.2f}$^\circ$",
+            label=rf"{stations[index]}, B={b:.2f} m, $\psi$={psi:.2f}$^\circ$",
         )
         ax.fill_between(
             wls[index],
@@ -376,7 +383,7 @@ def plot_baselines(
             ax.text(
                 0.05,
                 0.95,
-                f"{labels[index]}.{index + 1}",
+                labels[index],
                 transform=ax.transAxes,
                 fontsize=14,
                 fontweight="bold",
@@ -422,56 +429,51 @@ def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
     """
     handles = []
     colors = get_colorlist("tab20", len(data))
-    if index is not None:
-        color = colors[index]
-        ucoords, vcoords = data.vis2.x[index], data.vis2.y[index]
-        ax.plot(ucoords, vcoords, "x", markersize=6, markeredgewidth=2, color=color)
-        ax.plot(-ucoords, -vcoords, "x", markersize=6, markeredgewidth=2, color=color)
-    else:
-        ucoords, vcoords = [], []
-        for file_idx, (*_, x, y, _) in enumerate(data.vis2):
-            color = colors[file_idx]
-            ucoords.extend(x)
-            vcoords.extend(y)
+    # TODO: Reimplement individual uv plots (for a certain index)
+    labels, ucoords, vcoords = [], [], []
+    for file_idx, (*_, x, y, _) in enumerate(data.vis2):
+        color = colors[file_idx]
+        labels.extend([f"{data.label[file_idx]}.{i + 1}" for i in np.arange(x.size)])
+        ucoords.extend(x)
+        vcoords.extend(y)
 
-            ax.plot(
-                x,
-                y,
-                "x",
-                markersize=6,
-                markeredgewidth=2,
+        ax.plot(
+            x,
+            y,
+            "x",
+            markersize=6,
+            markeredgewidth=2,
+            color=color,
+        )
+        ax.plot(
+            -x,
+            -y,
+            "x",
+            markersize=6,
+            markeredgewidth=2,
+            color=color,
+        )
+        handles.append(
+            mlines.Line2D(
+                [],
+                [],
                 color=color,
+                marker="X",
+                linestyle="None",
+                label=data.header[file_idx]["date-obs"].split("T")[0],
             )
-            ax.plot(
-                -x,
-                -y,
-                "x",
-                markersize=6,
-                markeredgewidth=2,
-                color=color,
-            )
-            handles.append(
-                mlines.Line2D(
-                    [],
-                    [],
-                    color=color,
-                    marker="X",
-                    linestyle="None",
-                    label=data.header[file_idx]["date-obs"].split("T")[0],
-                )
-            )
+        )
 
-        ucoords, vcoords = np.array(ucoords), np.array(vcoords)
-
+    labels, ucoords, vcoords = np.array(labels), np.array(ucoords), np.array(vcoords)
     sorted_idx = np.argsort(np.hypot(ucoords, vcoords))
-    for idx, (ucoord, vcoord) in enumerate(
-        zip(ucoords[sorted_idx], vcoords[sorted_idx]), start=1
+    for label, ucoord, vcoord in zip(
+        labels[sorted_idx], ucoords[sorted_idx], vcoords[sorted_idx]
     ):
         ax.text(
             ucoord + 3.5,
             vcoord + 3.5,
-            idx,
-            fontsize="small",
+            label,
+            fontsize="xx-small",
             color="0",
             alpha=0.8,
         )
@@ -500,8 +502,7 @@ def plot(
     kind : str
         The kinds of plots. "individual", "combined" and "collage" are available.
     """
-    data = read_data(fits_files)
-    data = filter_data(data, bands=bands)
+    data = filter_data(read_data(fits_files), bands=bands)
     module = sys.modules[__name__]
     if plots == "all":
         plots = ["uv", "flux", "t3", "vis2", "vis", "visphi"]
@@ -524,6 +525,7 @@ def plot(
         )
         axarr = [axarr] if not isinstance(axarr, np.ndarray) else axarr
         for ax, plot in zip(axarr, plots):
+            # FIXME: This only works for one file with the index at -1
             getattr(module, f"plot_{plot}")(ax, data, -1)
 
     # TODO: Implement the individual plots again
