@@ -1,5 +1,5 @@
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Iterator, List
 
@@ -24,6 +24,22 @@ class Dataset:
     y: List[np.ndarray] = field(default_factory=list)
     station: List[List[str]] = field(default_factory=list)
 
+    def __len__(self):
+        return len(self.header)
+
+    def __getitem__(self, index: int | List[int]):
+        if isinstance(index, int):
+            index = [index]
+
+        if index[0] < 0 or index[-1] >= self.__len__():
+            raise IndexError("Index out of range.")
+
+        dataset = Dataset()
+        for content in fields(self):
+            setattr(dataset, content.name, [getattr(self, content.name)[i] for i in index])
+
+        return dataset
+
     def __iter__(self) -> Iterator:
         for i in range(len(self.header)):
             yield self.header[i], self.val[i], self.err[i], self.x[i], self.y[
@@ -47,6 +63,22 @@ class Data:
     def __len__(self):
         return len(self.hduls)
 
+    def __getitem__(self, index: int | List[int]):
+        if isinstance(index, int):
+            index = [index]
+
+        if index[0] < 0 or index[-1] >= self.__len__():
+            raise IndexError("Index out of range.")
+
+        data = Data()
+        for content in fields(self):
+            if isinstance(getattr(self, content.name), Dataset):
+                setattr(data, content.name, getattr(self, content.name)[index])
+            else:
+                setattr(data, content.name, [getattr(self, content.name)[i] for i in index])
+
+        return data
+
 
 def get_station_names(
     sta_index_pairs: np.ndarray, sta_index: np.ndarray, tel_name: np.ndarray
@@ -61,7 +93,7 @@ def get_station_names(
     )
 
 
-def read_data(fits_files: List[Path] | Path) -> Data:
+def read_data(fits_files: Path | List[Path]) -> Data:
     """Reads the data from the fits files."""
     data = Data()
     fits_files = [fits_files] if isinstance(fits_files, Path) else fits_files
@@ -143,6 +175,20 @@ def read_data(fits_files: List[Path] | Path) -> Data:
                             data.array[-1].data["sta_name"],
                         )
                     )
+    return data
+
+
+def filter_data(data: Data, **kwargs) -> Data:
+    """Filters the data based on the kwargs.
+
+    Parameters
+    ----------
+    bands : list of str or str
+    """
+    for key, value in kwargs.items():
+        if "band" in key:
+            ...
+
     return data
 
 
@@ -263,7 +309,10 @@ def plot_baselines(
         labels.extend([data.label[index] for _ in range(len(val))])
         baseline, psi = convert_coords_to_polar(x, y, deg=True)
         if observable == "t3":
-            longest_ind = (np.arange(baseline.T.shape[0]), np.argmax(baseline.T, axis=1))
+            longest_ind = (
+                np.arange(baseline.T.shape[0]),
+                np.argmax(baseline.T, axis=1),
+            )
             baseline, psi = baseline.T[longest_ind], psi.T[longest_ind]
 
         values.extend(val)
@@ -359,7 +408,18 @@ def plot_baselines(
 
 
 def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
-    """Plots the uv coverage."""
+    """Plots the uv coverage.
+
+    Parameters
+    ----------
+    ax :
+    data : Data
+    index : int, optional
+
+    Returns
+    -------
+    ax : Axes
+    """
     handles = []
     colors = get_colorlist("tab20", len(data))
     if index is not None:
@@ -428,6 +488,7 @@ def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
 def plot(
     fits_files: List[Path] | Path,
     plots: List[str] | str = "all",
+    bands: str = "all",
     kind: str = "collage",
     cell_width: int = 4,
     save_dir: Path | None = None,
@@ -440,6 +501,7 @@ def plot(
         The kinds of plots. "individual", "combined" and "collage" are available.
     """
     data = read_data(fits_files)
+    data = filter_data(data, bands=bands)
     module = sys.modules[__name__]
     if plots == "all":
         plots = ["uv", "flux", "t3", "vis2", "vis", "visphi"]
@@ -481,14 +543,12 @@ if __name__ == "__main__":
     path = Path().home() / "Data" / "fitting" / "hd142527"
     plot_dir = path / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
-
-    fits_files = list(path.glob("*U1*_N_*fits"))
-    plot(
-        fits_files,
-        kind="collage",
-        plots=["flux", "vis", "visphi", "t3"],
-        save_dir=plot_dir / "reflagged_data_nband.png",
-    )
+    # plot(
+    #     fits_files,
+    #     kind="collage",
+    #     plots=["flux", "vis", "visphi", "t3"],
+    #     save_dir=plot_dir / "reflagged_data_nband.png",
+    # )
 
     # fits_files = list((path).glob("HD_*.fits"))
     # for fits_file in tqdm(fits_files, desc="Plotting oifits..."):
