@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator, List, Tuple
+from typing import Iterator, List
 
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
@@ -10,8 +10,8 @@ from astropy.io import fits
 from matplotlib import colormaps as mcm
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap
-from tqdm import tqdm
 
+# from tqdm import tqdm
 from ..utils import convert_coords_to_polar, get_band, get_plot_layout
 
 
@@ -22,19 +22,20 @@ class Dataset:
     err: List[np.ma.MaskedArray] = field(default_factory=list)
     x: List[np.ndarray] = field(default_factory=list)
     y: List[np.ndarray] = field(default_factory=list)
-    name: List[List[str]] = field(default_factory=list)
+    station: List[List[str]] = field(default_factory=list)
 
     def __iter__(self) -> Iterator:
         for i in range(len(self.header)):
             yield self.header[i], self.val[i], self.err[i], self.x[i], self.y[
                 i
-            ], self.name[i]
+            ], self.station[i]
 
 
 @dataclass
 class Data:
     hduls: List[fits.HDUList] = field(default_factory=list)
     header: List[fits.Header] = field(default_factory=list)
+    label: List[str] = field(default_factory=list)
     wl: List[np.ndarray] = field(default_factory=list)
     array: List[fits.BinTableHDU] = field(default_factory=list)
     flux: Dataset = field(default_factory=Dataset)
@@ -60,16 +61,17 @@ def get_station_names(
     )
 
 
-def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
+def read_data(fits_files: List[Path] | Path) -> Data:
     """Reads the data from the fits files."""
     data = Data()
     fits_files = [fits_files] if isinstance(fits_files, Path) else fits_files
-    for fits_file in fits_files:
+    for index, fits_file in enumerate(fits_files):
         with fits.open(fits_file) as hdul:
             data.hduls.append(hdul.copy())
             data.header.append(hdul[0].header)
-            index = 20 if "grav" in data.header[-1]["INSTRUME"].lower() else None
-            data.wl.append(hdul["oi_wavelength", index].data["eff_wave"])
+            sci_index = 20 if "grav" in data.header[-1]["INSTRUME"].lower() else None
+            data.label.append(f"{chr(ord('A') + index // 9)}{(index % 9) + 1}")
+            data.wl.append(hdul["oi_wavelength", sci_index].data["eff_wave"])
             for key in ["array", "flux", "vis2", "vis", "t3"]:
                 if key == "array":
                     data.array.append(hdul[f"oi_{key}"].copy())
@@ -78,7 +80,7 @@ def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
                     if key == "vis" and f"oi_{key}" not in hdul:
                         ...
 
-                    card = hdul[f"oi_{key}", index]
+                    card = hdul[f"oi_{key}", sci_index]
                     if key == "flux":
                         val_key = (
                             "fluxdata" if "FLUXDATA" in card.columns.names else "flux"
@@ -107,14 +109,14 @@ def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
                             visphi_err = np.ma.masked_invalid(
                                 np.full(data.vis2.val[-1].shape, np.nan)
                             )
-                            visphi_name = data.vis2.name[-1].copy()
+                            visphi_name = data.vis2.station[-1].copy()
 
                         data.visphi.header.append(card.header)
                         data.visphi.val.append(visphi_val)
                         data.visphi.err.append(visphi_err)
                         data.visphi.x.append(xcoord)
                         data.visphi.y.append(ycoord)
-                        data.visphi.name.append(visphi_name)
+                        data.visphi.station.append(visphi_name)
                     elif key == "vis2":
                         val_key, err_key = "vis2data", "vis2err"
                         xcoord, ycoord = card.data["ucoord"], card.data["vcoord"]
@@ -134,7 +136,7 @@ def read_data(fits_files: List[Path] | Tuple[Path] | np.ndarray | Path) -> Data:
                     )
                     getattr(data, key).x.append(xcoord)
                     getattr(data, key).y.append(ycoord)
-                    getattr(data, key).name.append(
+                    getattr(data, key).station.append(
                         get_station_names(
                             card.data["sta_index"],
                             data.array[-1].data["sta_index"],
@@ -165,9 +167,61 @@ def get_colorlist(colormap: str, ncolors: int | None) -> List[str]:
     return [get_colormap(colormap)(i) for i in range(ncolors)]
 
 
+def plot_data(ax: Axes, x: np.ndarray, ys: np.ndarray, yerrs: np.ndarray) -> Axes:
+    """Plots some data with errors."""
+    for y, yerr in zip(ys, yerrs):
+        ax.plot(x, y)
+        ax.fill_between(x, y + yerr, y - yerr, alpha=0.2)
+    return ax
+
+
+# TODO: Finish this here
+# TODO: Move all this here to paper
+def plot_flux(ax: Axes, data: Data, index: int) -> Axes:
+    """Plots the flux."""
+    ax = plot_data(ax, data.wl[index], data.flux.val[index], data.flux.err[index])
+    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
+    ax.set_ylabel(r"$F_{\nu}$ $\left(\mathrm{Jy}\right)$")
+    return ax
+
+
+def plot_vis(ax: Axes, data: Data, index: int) -> Axes:
+    """Plots the visibility or the correlated flux."""
+    plot_data(ax, data.wl[index], data.vis.val[index], data.vis.err[index])
+    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
+    ax.set_ylabel(r"$F_{\nu,\,\mathrm{corr}}$ $\left(\mathrm{Jy}\right)$")
+    return ax
+
+
+def plot_visphi(ax: Axes, data: Data, index: int) -> Axes:
+    """Plots the differential phases."""
+    plot_data(ax, data.wl[index], data.visphi.val[index], data.visphi.err[index])
+    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
+    ax.set_ylabel(r"$\phi_{\mathrm{diff}}$ $\left(^\circ\right)$")
+    return ax
+
+
+def plot_vis2(ax: Axes, data: Data, index: int) -> Axes:
+    """Plots the squared visibility."""
+    plot_data(ax, data.wl[index], data.vis2.val[index], data.vis2.err[index])
+    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
+    ax.set_ylabel(r"$V^{2}$ (a.u.)")
+    ax.set_ylim((0, None) if ax.get_ylim()[1] < 1 else (0, 1))
+    return ax
+
+
+def plot_t3(ax: Axes, data: Data, index: int) -> Axes:
+    """Plots the closure phases."""
+    plot_data(ax, data.wl[index], data.t3.val[index], data.t3.err[index])
+    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
+    ax.set_ylabel(r"$\phi_{\mathrm{cp}}$ $\left(^\circ\right)$")
+    return ax
+
+
 # TODO: Implement the t3 for this function
 # TODO: Re-implement model overplotting for this function. Shouldn't be too hard
 # TODO: Include this in the plot class of this module
+# TODO: Make the band here flow into the read_data to only get the right indices somehow
 def plot_baselines(
     fits_files: List[Path] | Path,
     band: str,
@@ -197,7 +251,7 @@ def plot_baselines(
     band = "lmband" if band in ["lband", "mband"] else band
     data = read_data(fits_files)
 
-    wls, values, errors, baselines, psis, names = [], [], [], [], [], []
+    wls, labels, values, errors, baselines, psis, names = [], [], [], [], [], [], []
     for index, (_, val, err, x, y, name) in enumerate(getattr(data, observable)):
         band_dataset = get_band((data.wl[index][0], data.wl[index][-1]))
         if (band_dataset in ["lband", "mband"] and not band == "lmband") or (
@@ -206,17 +260,19 @@ def plot_baselines(
             continue
 
         wls.extend([data.wl[index] for _ in range(len(val))])
+        labels.extend([data.label[index] for _ in range(len(val))])
         baseline, psi = convert_coords_to_polar(x, y, deg=True)
         values.extend(val)
         errors.extend(err)
         baselines.extend(baseline)
         psis.extend(psi)
-        names.extend(map(lambda x: f"{x}, {index}", name))
+        names.extend(name)
 
     nplots = max_plots if len(values) > max_plots else len(values)
     baseline_ind = np.argsort(baselines)
-    wls, values, errors, baselines, psis, names = (
+    wls, labels, values, errors, baselines, psis, names = (
         [wls[i] for i in baseline_ind],
+        [labels[i] for i in baseline_ind],
         [values[i] for i in baseline_ind],
         [errors[i] for i in baseline_ind],
         np.array(baselines)[baseline_ind],
@@ -228,8 +284,9 @@ def plot_baselines(
     percentile_ind = np.percentile(
         np.arange(len(values)), np.linspace(0, 100, nplots)
     ).astype(int)
-    wls, values, errors, baselines, psis, names = (
+    wls, labels, values, errors, baselines, psis, names = (
         [wls[i] for i in percentile_ind],
+        [labels[i] for i in percentile_ind],
         [values[i] for i in percentile_ind],
         [errors[i] for i in percentile_ind],
         baselines[percentile_ind],
@@ -250,11 +307,10 @@ def plot_baselines(
     for index, (ax, b, psi) in enumerate(zip(axarr.flat, baselines, psis)):
         ymax = np.max(values[index]) if np.max(values[index]) > ymax else ymax
         ymin = np.min(values[index]) if np.min(values[index]) < ymin else ymin
-        label = rf"{names[index]}, B={b:.2f} m, $\psi$={psi:.2f}$^\circ$"
         line = ax.plot(
             wls[index],
             values[index],
-            label=label,
+            label=rf"{names[index]}, B={b:.2f} m, $\psi$={psi:.2f}$^\circ$",
         )
         ax.fill_between(
             wls[index],
@@ -267,7 +323,7 @@ def plot_baselines(
             ax.text(
                 0.05,
                 0.95,
-                str(index + 1),
+                f"{labels[index]}.{index + 1}",
                 transform=ax.transAxes,
                 fontsize=14,
                 fontweight="bold",
@@ -363,57 +419,6 @@ def plot_uv(ax: Axes, data: Data, index: int | None = None) -> Axes:
     plt.gca().invert_xaxis()
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-
-
-def plot_data(ax: Axes, x: np.ndarray, ys: np.ndarray, yerrs: np.ndarray) -> Axes:
-    """Plots some data with errors."""
-    for y, yerr in zip(ys, yerrs):
-        ax.plot(x, y)
-        ax.fill_between(x, y + yerr, y - yerr, alpha=0.2)
-    return ax
-
-
-# TODO: Finish this here
-# TODO: Move all this here to paper
-def plot_flux(ax: Axes, data: Data, index: int) -> Axes:
-    """Plots the flux."""
-    ax = plot_data(ax, data.wl[index], data.flux.val[index], data.flux.err[index])
-    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
-    ax.set_ylabel(r"$F_{\nu}$ $\left(\mathrm{Jy}\right)$")
-    return ax
-
-
-def plot_vis(ax: Axes, data: Data, index: int) -> Axes:
-    """Plots the visibility or the correlated flux."""
-    plot_data(ax, data.wl[index], data.vis.val[index], data.vis.err[index])
-    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
-    ax.set_ylabel(r"$F_{\nu,\,\mathrm{corr}}$ $\left(\mathrm{Jy}\right)$")
-    return ax
-
-
-def plot_visphi(ax: Axes, data: Data, index: int) -> Axes:
-    """Plots the differential phases."""
-    plot_data(ax, data.wl[index], data.visphi.val[index], data.visphi.err[index])
-    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
-    ax.set_ylabel(r"$\phi_{\mathrm{diff}}$ $\left(^\circ\right)$")
-    return ax
-
-
-def plot_vis2(ax: Axes, data: Data, index: int) -> Axes:
-    """Plots the squared visibility."""
-    plot_data(ax, data.wl[index], data.vis2.val[index], data.vis2.err[index])
-    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
-    ax.set_ylabel(r"$V^{2}$ (a.u.)")
-    ax.set_ylim((0, None) if ax.get_ylim()[1] < 1 else (0, 1))
-    return ax
-
-
-def plot_t3(ax: Axes, data: Data, index: int) -> Axes:
-    """Plots the closure phases."""
-    plot_data(ax, data.wl[index], data.t3.val[index], data.t3.err[index])
-    ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
-    ax.set_ylabel(r"$\phi_{\mathrm{cp}}$ $\left(^\circ\right)$")
-    return ax
 
 
 def plot(
