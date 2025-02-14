@@ -262,6 +262,10 @@ def plot_baselines(
         wls.extend([data.wl[index] for _ in range(len(val))])
         labels.extend([data.label[index] for _ in range(len(val))])
         baseline, psi = convert_coords_to_polar(x, y, deg=True)
+        if observable == "t3":
+            longest_ind = (np.arange(baseline.T.shape[0]), np.argmax(baseline.T, axis=1))
+            baseline, psi = baseline.T[longest_ind], psi.T[longest_ind]
+
         values.extend(val)
         errors.extend(err)
         baselines.extend(baseline)
