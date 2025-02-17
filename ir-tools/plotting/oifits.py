@@ -69,6 +69,7 @@ class Data:
         if isinstance(index, int):
             index = [index]
 
+        # FIXME: Gives an error if data is filtered by band that only has that one band
         if index[0] < 0 or index[-1] >= self.__len__():
             raise IndexError("Index out of range.")
 

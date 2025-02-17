@@ -24,7 +24,7 @@ from ppdmod.utils import (
 )
 
 from ..tables import best_fit_parameters
-from .oifits import plot_baselines
+from . import oifits
 
 np.seterr(over="ignore", divide="ignore")
 
@@ -35,35 +35,25 @@ def ptform():
 
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    path = data_dir / "results" / "disc" / "2025-02-11"
-    path /= "all_data"
+    path = data_dir / "results" / "disc" / "2025-02-13"
+    path /= "matisse_and_2nband_temp_power_xy_free"
 
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
     assets_dir.mkdir(exist_ok=True, parents=True)
 
     fits_dir = data_dir / "fitting" / "hd142527"
-    wavelengths = {
-        "hband": [1.7] * u.um,
-        "kband": [2.15] * u.um,
-        "lband": windowed_linspace(3.1, 3.8, OPTIONS.data.binning.lband.value) * u.um,
-        "mband": windowed_linspace(4.65, 4.9, OPTIONS.data.binning.mband.value) * u.um,
-        "nband": windowed_linspace(8.25, 12.75, OPTIONS.data.binning.nband.value)
-        * u.um,
-    }
-    fits_files = list((fits_dir).glob("*fits"))
+    fits_files = list(map(lambda x: fits_dir / x, np.load(path / "files.npy")))
 
     OPTIONS.fit.fitter = "dynesty"
     OPTIONS.fit.condition = "sequential_radii"
 
     dim = 1024
-    bands = ["hband", "kband", "lband", "mband", "nband"]
-    wavelengths = np.concatenate([wavelengths[band] for band in bands])
-    fit_data = ["flux", "vis", "t3"]
+    wavelengths = np.load(path / "wl.npy") * u.um
     data = set_data(
         fits_files,
         wavelengths=wavelengths,
-        fit_data=fit_data,
+        fit_data=np.load(path / "observables.npy"),
     )
     if OPTIONS.fit.fitter == "emcee":
         sampler = emcee.backends.HDFBackend(path / "sampler.h5")
@@ -91,7 +81,7 @@ if __name__ == "__main__":
     print(f"Total reduced chi sq: {rchi_sqs[0]:.2f}")
     print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
 
-    plot_format = "pdf"
+    plot_format = "png"
     plot_corner(
         sampler,
         labels,
@@ -158,30 +148,41 @@ if __name__ == "__main__":
     )
 
     max_plots, number = 20, True
-    # bands = ["hband", "kband", "lband", "nband"]
-    bands = ["nband"]
-    for band in bands:
-        plot_baselines(
-            fits_files,
-            band,
-            "vis",
-            max_plots=max_plots,
-            number=number,
-            save_dir=plot_dir,
-        )
-        plot_baselines(
-            fits_files,
-            band,
-            "visphi",
-            max_plots=max_plots,
-            number=number,
-            save_dir=plot_dir,
-        )
-        # plot_baselines(
-        #     fits_files,
-        #     band,
-        #     "t3",
-        #     max_plots=max_plots,
-        #     number=False,
-        #     save_dir=plot_dir,
-        # )
+    # HACK: Remove that for now as it doesn't work to do it in the functions
+    fits_files = [s for s in fits_files if "GRAV" not in s.stem]
+    fits_files = [s for s in fits_files if "PION" not in s.stem]
+
+    # oifits.plot(
+    #     fits_files,
+    #     bands=["nband"],
+    #     kind="combined",
+    #     plots=["uv"],
+    #     save_dir=plot_dir / "uv.png",
+    # )
+    #
+    # bands = ["lband", "nband"]
+    # for band in bands:
+    #     oifits.plot_baselines(
+    #         fits_files,
+    #         band,
+    #         "vis",
+    #         max_plots=max_plots,
+    #         number=number,
+    #         save_dir=plot_dir,
+    #     )
+    #     oifits.plot_baselines(
+    #         fits_files,
+    #         band,
+    #         "visphi",
+    #         max_plots=max_plots,
+    #         number=number,
+    #         save_dir=plot_dir,
+    #     )
+    #     oifits.plot_baselines(
+    #         fits_files,
+    #         band,
+    #         "t3",
+    #         max_plots=max_plots,
+    #         number=number,
+    #         save_dir=plot_dir,
+    #     )
