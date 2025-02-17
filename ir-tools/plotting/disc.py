@@ -24,7 +24,7 @@ from ppdmod.utils import (
 )
 
 from ..tables import best_fit_parameters
-from . import oifits
+from . import io, oiplot
 
 np.seterr(over="ignore", divide="ignore")
 
@@ -36,7 +36,7 @@ def ptform():
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
     path = data_dir / "results" / "disc" / "2025-02-13"
-    path /= "matisse_and_2nband_temp_power_xy_free"
+    path /= "all_nband_temp_power_xy_free"
 
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -82,107 +82,120 @@ if __name__ == "__main__":
     print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
 
     plot_format = "png"
-    plot_corner(
-        sampler,
-        labels,
-        units,
-        savefig=(plot_dir / f"corner.{plot_format}"),
-    )
-    plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
-    plot_overview(
-        bands=["nband"],
-        savefig=(plot_dir / f"overview_nband.{plot_format}"),
-    )
-    plot_overview(
-        bands=["hband", "kband", "lband", "mband"],
-        savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
-    )
-    plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
-    plot_fit(
-        components=components,
-        bands=["nband"],
-        savefig=(plot_dir / f"disc_nband.{plot_format}"),
-    )
-    plot_fit(
-        components=components,
-        bands=["hband", "kband", "lband", "mband"],
-        ylims={"t3": [-15, 15]},
-        savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
-    )
-    zoom = 5
-    plot_components(
-        components,
-        dim,
-        0.1,
-        3.5,
-        norm=0.3,
-        zoom=zoom,
-        savefig=plot_dir / "image_lband.png",
-    )
-    plot_components(
-        components,
-        dim,
-        0.1,
-        10.5,
-        norm=0.3,
-        zoom=zoom,
-        savefig=plot_dir / "image_nband.png",
-    )
-    best_fit_parameters(
-        labels,
-        units,
-        theta,
-        uncertainties,
-        save_as_csv=True,
-        savefig=assets_dir / "disc.csv",
-        fit_method=OPTIONS.fit.fitter,
-    )
-    best_fit_parameters(
-        labels,
-        units,
-        theta,
-        uncertainties,
-        save_as_csv=False,
-        savefig=assets_dir / "disc",
-        fit_method=OPTIONS.fit.fitter,
-    )
+    # plot_corner(
+    #     sampler,
+    #     labels,
+    #     units,
+    #     savefig=(plot_dir / f"corner.{plot_format}"),
+    # )
+    # plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
+    # plot_overview(
+    #     bands=["nband"],
+    #     savefig=(plot_dir / f"overview_nband.{plot_format}"),
+    # )
+    # plot_overview(
+    #     bands=["hband", "kband", "lband", "mband"],
+    #     savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
+    # )
+    # plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
+    # plot_fit(
+    #     components=components,
+    #     bands=["nband"],
+    #     savefig=(plot_dir / f"disc_nband.{plot_format}"),
+    # )
+    # plot_fit(
+    #     components=components,
+    #     bands=["hband", "kband", "lband", "mband"],
+    #     ylims={"t3": [-15, 15]},
+    #     savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
+    # )
+    # zoom = 5
+    # plot_components(
+    #     components,
+    #     dim,
+    #     0.1,
+    #     3.5,
+    #     norm=0.3,
+    #     zoom=zoom,
+    #     savefig=plot_dir / "image_lband.png",
+    # )
+    # plot_components(
+    #     components,
+    #     dim,
+    #     0.1,
+    #     10.5,
+    #     norm=0.3,
+    #     zoom=zoom,
+    #     savefig=plot_dir / "image_nband.png",
+    # )
+    # best_fit_parameters(
+    #     labels,
+    #     units,
+    #     theta,
+    #     uncertainties,
+    #     save_as_csv=True,
+    #     savefig=assets_dir / "disc.csv",
+    #     fit_method=OPTIONS.fit.fitter,
+    # )
+    # best_fit_parameters(
+    #     labels,
+    #     units,
+    #     theta,
+    #     uncertainties,
+    #     save_as_csv=False,
+    #     savefig=assets_dir / "disc",
+    #     fit_method=OPTIONS.fit.fitter,
+    # )
 
     max_plots, number = 20, True
     # HACK: Remove that for now as it doesn't work to do it in the functions
     fits_files = [s for s in fits_files if "GRAV" not in s.stem]
     fits_files = [s for s in fits_files if "PION" not in s.stem]
 
-    # oifits.plot(
-    #     fits_files,
-    #     bands=["nband"],
-    #     kind="combined",
-    #     plots=["uv"],
-    #     save_dir=plot_dir / "uv.png",
-    # )
-    #
-    # bands = ["lband", "nband"]
-    # for band in bands:
-    #     oifits.plot_baselines(
-    #         fits_files,
-    #         band,
-    #         "vis",
-    #         max_plots=max_plots,
-    #         number=number,
-    #         save_dir=plot_dir,
-    #     )
-    #     oifits.plot_baselines(
-    #         fits_files,
-    #         band,
-    #         "visphi",
-    #         max_plots=max_plots,
-    #         number=number,
-    #         save_dir=plot_dir,
-    #     )
-    #     oifits.plot_baselines(
-    #         fits_files,
-    #         band,
-    #         "t3",
-    #         max_plots=max_plots,
-    #         number=number,
-    #         save_dir=plot_dir,
-    #     )
+    hduls = io.sort(io.read(fits_files), by="date")
+    oiplot.plot(
+        hduls,
+        bands=["nband"],
+        kind="combined",
+        plots=["uv"],
+        number=number,
+        save_dir=plot_dir / "uv_uts.png",
+    )
+
+    bands = ["nband"]
+    for band in bands:
+        oiplot.plot_vs_spf(
+            hduls,
+            band,
+            "vis",
+            max_plots=max_plots,
+            number=number,
+            save_dir=plot_dir,
+        )
+        oiplot.plot_vs_spf(
+            hduls,
+            band,
+            "visphi",
+            ylims=[-20, 20],
+            max_plots=max_plots,
+            number=number,
+            save_dir=plot_dir,
+        )
+        oiplot.plot_vs_spf(
+            hduls,
+            band,
+            "t3",
+            ylims=[-20, 55],
+            max_plots=max_plots,
+            number=number,
+            save_dir=plot_dir,
+        )
+
+    hduls = io.sort(io.read(list(fits_dir.glob("*.fits"))), by="instrument")
+    oiplot.plot(
+        hduls,
+        kind="combined",
+        plots=["uv"],
+        color_by="instrument",
+        save_dir=plot_dir / "uv_all.png",
+    )

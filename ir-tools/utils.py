@@ -105,15 +105,15 @@ def get_band(
         )
 
 
-def convert_coords_to_polar(
+def transform_coordinates(
     x: float | np.ndarray,
     y: float | np.ndarray,
     cinc: float | None = None,
     pa: float | None = None,
-    deg: bool = False,
+    axis: str = "y",
 ) -> Tuple[float | np.ndarray, float | np.ndarray]:
-    """Calculates the effective baselines from the projected baselines
-    in mega lambda.
+    """Stretches and rotates the coordinate space depending on the
+    cosine of inclination and the positional angle.
 
     Parameters
     ----------
@@ -125,30 +125,30 @@ def convert_coords_to_polar(
         The cosine of the inclination.
     pa: float, optional
         The positional angle of the object (in degree).
-    deg : bool, optional
-        If True, the angle will be returned in degree.
+    axis: str, optional
+        The axis to stretch the coordinates on.
 
     Returns
     -------
-    distance : float or numpy.ndarray
-        Returns the distance to the point.
-    angle : float or numpy.ndarray
-        Returns the angle of the point (radians or degree
-        if "deg=True").
+    xt: float or numpy.ndarray
+        Transformed x coordinate.
+    yt: float or numpy.ndarray
+        Transformed y coordinate.
     """
     if pa is not None:
         pa = np.deg2rad(pa)
-        xr = x * np.cos(pa) - y * np.sin(pa)
-        yr = x * np.sin(pa) + y * np.cos(pa)
+        xt = x * np.cos(pa) - y * np.sin(pa)
+        yt = x * np.sin(pa) + y * np.cos(pa)
     else:
-        xr, yr = x, y
+        xt, yt = x, y
 
     if cinc is not None:
-        xr *= cinc
+        if axis == "x":
+            xt /= cinc
+        elif axis == "y":
+            xt *= cinc
 
-    theta = np.arctan2(xr, yr)
-    return np.hypot(xr, yr), np.rad2deg(theta) if deg else theta
-
+    return xt, yt
 
 
 def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
