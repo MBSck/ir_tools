@@ -82,52 +82,52 @@ if __name__ == "__main__":
     print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
 
     plot_format = "png"
-    # plot_corner(
-    #     sampler,
-    #     labels,
-    #     units,
-    #     savefig=(plot_dir / f"corner.{plot_format}"),
-    # )
-    # plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
-    # plot_overview(
-    #     bands=["nband"],
-    #     savefig=(plot_dir / f"overview_nband.{plot_format}"),
-    # )
-    # plot_overview(
-    #     bands=["hband", "kband", "lband", "mband"],
-    #     savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
-    # )
-    # plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
-    # plot_fit(
-    #     components=components,
-    #     bands=["nband"],
-    #     savefig=(plot_dir / f"disc_nband.{plot_format}"),
-    # )
-    # plot_fit(
-    #     components=components,
-    #     bands=["hband", "kband", "lband", "mband"],
-    #     ylims={"t3": [-15, 15]},
-    #     savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
-    # )
-    # zoom = 5
-    # plot_components(
-    #     components,
-    #     dim,
-    #     0.1,
-    #     3.5,
-    #     norm=0.3,
-    #     zoom=zoom,
-    #     savefig=plot_dir / "image_lband.png",
-    # )
-    # plot_components(
-    #     components,
-    #     dim,
-    #     0.1,
-    #     10.5,
-    #     norm=0.3,
-    #     zoom=zoom,
-    #     savefig=plot_dir / "image_nband.png",
-    # )
+    plot_corner(
+        sampler,
+        labels,
+        units,
+        savefig=(plot_dir / f"corner.{plot_format}"),
+    )
+    plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
+    plot_overview(
+        bands=["nband"],
+        savefig=(plot_dir / f"overview_nband.{plot_format}"),
+    )
+    plot_overview(
+        bands=["hband", "kband", "lband", "mband"],
+        savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
+    )
+    plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
+    plot_fit(
+        components=components,
+        bands=["nband"],
+        savefig=(plot_dir / f"disc_nband.{plot_format}"),
+    )
+    plot_fit(
+        components=components,
+        bands=["hband", "kband", "lband", "mband"],
+        ylims={"t3": [-15, 15]},
+        savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
+    )
+    zoom = 5
+    plot_components(
+        components,
+        dim,
+        0.1,
+        [3.5] * u.um,
+        norm=0.3,
+        zoom=zoom,
+        savefig=plot_dir / "image_lband.png",
+    )
+    plot_components(
+        components,
+        dim,
+        0.1,
+        [10.5] * u.um,
+        norm=0.3,
+        zoom=zoom,
+        savefig=plot_dir / "image_nband.png",
+    )
     # best_fit_parameters(
     #     labels,
     #     units,
