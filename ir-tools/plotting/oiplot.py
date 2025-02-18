@@ -47,7 +47,11 @@ def get_colorlist(colormap: str, ncolors: int | None) -> List[str]:
 
 # TODO: Reimplement individual uv plots (for a certain index)
 def plot_uv(
-    ax: Axes, hduls: List[fits.HDUList], color_by: str = "file", number: bool = False, **kwargs
+    ax: Axes,
+    hduls: List[fits.HDUList],
+    color_by: str = "file",
+    number: bool = False,
+    **kwargs,
 ) -> Axes:
     """Plots the uv coverage.
 
@@ -154,6 +158,7 @@ def plot_vs_spf(
     ylims: List[float] | None = None,
     max_plots: int = 20,
     number: bool = False,
+    transparent: bool = False,
     save_dir: Path | None = None,
     **kwargs,
 ) -> None:
@@ -176,7 +181,6 @@ def plot_vs_spf(
     save_dir : Path, optional
         The save directory for the plots.
     """
-    save_dir = Path.cwd() if save_dir is None else save_dir
     hduls = io.read(files_or_hduls)
     file_letter = io.get_labels(hduls)
 
@@ -295,9 +299,6 @@ def plot_vs_spf(
             )
         ax.legend()
 
-    # TODO: Reimplement this
-    # fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
-    # fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
     if ylims is None:
         ylims = [ymin - ymin * 0.25, ymax + ymax * 0.25]
 
@@ -309,10 +310,23 @@ def plot_vs_spf(
     elif observable == "t3":
         y_label = r"$\phi_{\mathrm{cl.}}$ ($^\circ$)"
 
-    [ax.set_ylim(ylims) for ax in axarr.flat]
-    [ax.remove() for index, ax in enumerate(axarr.flat) if index >= nplots]
-    # fig.subplots_adjust(left=0.2, bottom=0.2)
-    plt.savefig(save_dir / f"{observable}_{band}.pdf", format="pdf", transparent=True)
+    for index, ax in enumerate(axarr.flat):
+        if index >= nplots:
+            ax.remove()
+            continue
+
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set_ylim(ylims)
+
+    fig.supxlabel(r"$\lambda$ (m)", fontsize=16)
+    fig.supylabel(y_label, fontsize=16)
+    if save_dir is not None:
+        plt.savefig(
+            save_dir, format=save_dir.suffix[1:], dpi=300, transparent=transparent
+        )
+    else:
+        plt.show()
     plt.close()
 
 
