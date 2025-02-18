@@ -266,6 +266,7 @@ def plot_vs_spf(
         cols,
         figsize=(cols * 4, rows * 4),
         sharex=True,
+        sharey=True,
         constrained_layout=True,
     )
 
