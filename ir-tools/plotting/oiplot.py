@@ -90,16 +90,16 @@ def plot_uv(
             x,
             y,
             "x",
-            markersize=6,
-            markeredgewidth=2,
+            markersize=5,
+            markeredgewidth=1,
             color=color,
         )
         ax.plot(
             -x,
             -y,
             "x",
-            markersize=6,
-            markeredgewidth=2,
+            markersize=5,
+            markeredgewidth=1,
             color=line[0].get_color(),
         )
 
@@ -114,6 +114,8 @@ def plot_uv(
                 marker="X",
                 linestyle="None",
                 label=label,
+                markersize=4,
+                markeredgewidth=1,
             )
         )
 
@@ -127,18 +129,20 @@ def plot_uv(
                 ucoord + 3.5,
                 vcoord + 3.5,
                 name,
-                fontsize="xx-small",
+                fontsize=4,
                 color="0",
                 alpha=0.8,
             )
 
-    ax.plot([0.0], [0.0], "+k", markersize=5, markeredgewidth=2, alpha=0.5)
+    ax.plot([0.0], [0.0], "+k", markersize=4, markeredgewidth=1, alpha=0.5)
     xlabel, ylabel = "$u$ (m) - South", "$v$ (m) - East"
     ax.legend(handles=handles, fontsize="small")
 
     plt.gca().invert_xaxis()
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    ax.set_ylim([-150, 150])
+    ax.set_xlim([150, -150])
 
 
 # TODO: Re-implement model overplotting for this function. Shouldn't be too hard
