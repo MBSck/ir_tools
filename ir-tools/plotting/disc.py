@@ -1,10 +1,13 @@
 import pickle
+from functools import partial
 from pathlib import Path
+from typing import Any
 
 import astropy.units as u
 import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler
+from numpy.typing import NDArray
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -20,7 +23,8 @@ from ppdmod.plot import (
     plot_overview,
 )
 from ppdmod.utils import (
-    windowed_linspace,
+    compute_t3,
+    compute_vis,
 )
 
 from ..tables import best_fit_parameters
@@ -82,52 +86,52 @@ if __name__ == "__main__":
     print(f"Individual reduced chi_sqs: {np.round(rchi_sqs[1:], 2)}")
 
     plot_format = "png"
-    plot_corner(
-        sampler,
-        labels,
-        units,
-        savefig=(plot_dir / f"corner.{plot_format}"),
-    )
-    plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
-    plot_overview(
-        bands=["nband"],
-        savefig=(plot_dir / f"overview_nband.{plot_format}"),
-    )
-    plot_overview(
-        bands=["hband", "kband", "lband", "mband"],
-        savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
-    )
-    plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
-    plot_fit(
-        components=components,
-        bands=["nband"],
-        savefig=(plot_dir / f"disc_nband.{plot_format}"),
-    )
-    plot_fit(
-        components=components,
-        bands=["hband", "kband", "lband", "mband"],
-        ylims={"t3": [-15, 15]},
-        savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
-    )
-    zoom = 5
-    plot_components(
-        components,
-        dim,
-        0.1,
-        [3.5] * u.um,
-        norm=0.3,
-        zoom=zoom,
-        savefig=plot_dir / "image_lband.png",
-    )
-    plot_components(
-        components,
-        dim,
-        0.1,
-        [10.5] * u.um,
-        norm=0.3,
-        zoom=zoom,
-        savefig=plot_dir / "image_nband.png",
-    )
+    # plot_corner(
+    #     sampler,
+    #     labels,
+    #     units,
+    #     savefig=(plot_dir / f"corner.{plot_format}"),
+    # )
+    # plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
+    # plot_overview(
+    #     bands=["nband"],
+    #     savefig=(plot_dir / f"overview_nband.{plot_format}"),
+    # )
+    # plot_overview(
+    #     bands=["hband", "kband", "lband", "mband"],
+    #     savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
+    # )
+    # plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
+    # plot_fit(
+    #     components=components,
+    #     bands=["nband"],
+    #     savefig=(plot_dir / f"disc_nband.{plot_format}"),
+    # )
+    # plot_fit(
+    #     components=components,
+    #     bands=["hband", "kband", "lband", "mband"],
+    #     ylims={"t3": [-15, 15]},
+    #     savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
+    # )
+    # zoom = 5
+    # plot_components(
+    #     components,
+    #     dim,
+    #     0.1,
+    #     [3.5] * u.um,
+    #     norm=0.3,
+    #     zoom=zoom,
+    #     savefig=plot_dir / "image_lband.png",
+    # )
+    # plot_components(
+    #     components,
+    #     dim,
+    #     0.1,
+    #     [10.5] * u.um,
+    #     norm=0.3,
+    #     zoom=zoom,
+    #     savefig=plot_dir / "image_nband.png",
+    # )
     # best_fit_parameters(
     #     labels,
     #     units,
@@ -162,6 +166,21 @@ if __name__ == "__main__":
         save_dir=plot_dir / "uv_uts.png",
     )
 
+    def model_func(ucoord, vcoord, wl, components, observable) -> NDArray[Any]:
+        ucoord = u.Quantity(np.insert(ucoord, 0, 0), u.m).reshape(1, -1)
+        vcoord = u.Quantity(np.insert(vcoord, 0, 0), u.m).reshape(1, -1)
+        wl = u.Quantity(wl, u.m).to(u.um)
+        complex_vis = np.sum(
+            [comp.compute_complex_vis(ucoord, vcoord, wl) for comp in components],
+            axis=0,
+        ).T
+
+        flux_model = complex_vis[0]
+        if OPTIONS.model.output == "normed":
+            complex_vis /= flux_model
+
+        return compute_vis(complex_vis[1:])
+
     bands = ["nband"]
     for band in bands:
         oiplot.plot_vs_spf(
@@ -170,7 +189,16 @@ if __name__ == "__main__":
             "vis",
             max_plots=max_plots,
             number=number,
-            save_dir=plot_dir,
+            save_dir=plot_dir / "vis_vs_spf.png",
+        )
+        oiplot.plot_vs_spf(
+            hduls,
+            band,
+            "vis",
+            model_func=partial(model_func, components=components, observable="vis"),
+            max_plots=max_plots,
+            number=number,
+            save_dir=plot_dir / "vis_vs_spf_model.png",
         )
         oiplot.plot_vs_spf(
             hduls,
@@ -179,7 +207,7 @@ if __name__ == "__main__":
             ylims=[-20, 20],
             max_plots=max_plots,
             number=number,
-            save_dir=plot_dir,
+            save_dir=plot_dir / "visphi_vs_spf.png",
         )
         oiplot.plot_vs_spf(
             hduls,
@@ -188,7 +216,7 @@ if __name__ == "__main__":
             ylims=[-20, 55],
             max_plots=max_plots,
             number=number,
-            save_dir=plot_dir,
+            save_dir=plot_dir / "t3_vs_spf.png",
         )
 
     hduls = io.sort(io.read(list(fits_dir.glob("*.fits"))), by="instrument")
