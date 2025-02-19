@@ -149,7 +149,6 @@ def plot_uv(
     ax.set_xlim([150, -150])
 
 
-# TODO: Re-implement model overplotting for this function. Shouldn't be too hard
 # TODO: Include this in the plot class of this module
 def plot_vs_spf(
     files_or_hduls: Path | fits.HDUList | List[Path] | List[fits.HDUList],
@@ -206,9 +205,9 @@ def plot_vs_spf(
         wls.extend(
             [io.get_column(hdul, "oi_wavelength", "eff_wave") for _ in range(len(val))]
         )
-        if observable in ["vis", "visphi"]:
-            x = io.get_column(hdul, "oi_vis", "ucoord")
-            y = io.get_column(hdul, "oi_vis", "vcoord")
+        if observable in ["vis", "vis2", "visphi"]:
+            x = io.get_column(hdul, f"oi_{card_key}", "ucoord")
+            y = io.get_column(hdul, f"oi_{card_key}", "vcoord")
             if model_func is not None:
                 model_vals.extend(model_func(x, y, wls[-1]))
 
@@ -323,6 +322,9 @@ def plot_vs_spf(
     if observable == "vis":
         y_label = r"$F_{\nu,\,\mathrm{corr.}}$ (Jy)"
         ylims[0] = 0
+    elif observable == "vis2":
+        y_label = r"$V^2$ (a.u.)"
+        ylims = [0, 1]
     elif observable == "visphi":
         y_label = r"$\phi_{\mathrm{diff.}}$ ($^\circ$)"
     elif observable == "t3":
