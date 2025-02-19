@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Callable, List
 
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
@@ -159,6 +159,7 @@ def plot_vs_spf(
     max_plots: int = 20,
     number: bool = False,
     transparent: bool = False,
+    model_func: Callable | None = None,
     save_dir: Path | None = None,
     **kwargs,
 ) -> None:
@@ -185,7 +186,7 @@ def plot_vs_spf(
     file_letter = io.get_labels(hduls)
 
     wls, stations, labels = [], [], []
-    vals, errs, spfs, psis = [], [], [], []
+    vals, errs, spfs, psis, model_vals = [], [], [], [], []
     for index, hdul in enumerate(hduls):
         val_key, err_key = CARD_KEYS[observable]
         card_key = observable if observable != "visphi" else "vis"
@@ -208,6 +209,9 @@ def plot_vs_spf(
         if observable in ["vis", "visphi"]:
             x = io.get_column(hdul, "oi_vis", "ucoord")
             y = io.get_column(hdul, "oi_vis", "vcoord")
+            if model_func is not None:
+                model_vals.extend(model_func(x, y, wls[-1]))
+
         if observable == "t3":
             x1, x2 = map(
                 lambda x: io.get_column(hdul, "oi_t3", x), ["u1coord", "u2coord"]
@@ -244,6 +248,8 @@ def plot_vs_spf(
         np.array(psis)[baseline_ind],
         np.array(stations)[baseline_ind],
     )
+    if model_vals:
+        model_vals = [model_vals[i] for i in baseline_ind]
 
     percentile_ind = np.percentile(
         np.arange(len(vals)), np.linspace(0, 100, nplots)
@@ -257,6 +263,9 @@ def plot_vs_spf(
         psis[percentile_ind],
         stations[percentile_ind],
     )
+    if model_vals:
+        model_vals = [model_vals[i] for i in baseline_ind]
+
     label_colors = np.unique([label.split(".")[0] for label in labels])
     label_colors = dict(zip(label_colors, get_colorlist("tab20", len(label_colors))))
 
@@ -287,6 +296,14 @@ def plot_vs_spf(
             color=line[0].get_color(),
             alpha=0.5,
         )
+        if model_vals:
+            line = ax.plot(
+                wls[index],
+                model_vals[index],
+                color="k",
+                label="Model",
+            )
+
         if number:
             ax.text(
                 0.05,
