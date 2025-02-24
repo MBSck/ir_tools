@@ -19,7 +19,7 @@ from ppdmod.plot import (
     plot_components,
     plot_corner,
     plot_fit,
-    plot_intermediate_products,
+    plot_products,
     plot_overview,
 )
 from ppdmod.utils import (
@@ -39,8 +39,8 @@ def ptform():
 
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    path = data_dir / "results" / "disc" / "2025-02-13"
-    path /= "all_nband_temp_power_xy_free"
+    path = data_dir / "results" / "disc" / "2025-02-20"
+    path /= "all_matisse_three_zones"
 
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
@@ -74,8 +74,6 @@ if __name__ == "__main__":
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
     component_labels = [component.label for component in components]
-
-    # TODO: Check why the chi_sq is different here from the value that it should be?
     rchi_sqs = compute_interferometric_chi_sq(
         components,
         theta.size,
@@ -92,28 +90,28 @@ if __name__ == "__main__":
     #     units,
     #     savefig=(plot_dir / f"corner.{plot_format}"),
     # )
-    # plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
-    # plot_overview(
-    #     bands=["nband"],
-    #     savefig=(plot_dir / f"overview_nband.{plot_format}"),
-    # )
-    # plot_overview(
-    #     bands=["hband", "kband", "lband", "mband"],
-    #     savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
-    # )
-    # plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
-    # plot_fit(
-    #     components=components,
-    #     bands=["nband"],
-    #     savefig=(plot_dir / f"disc_nband.{plot_format}"),
-    # )
-    # plot_fit(
-    #     components=components,
-    #     bands=["hband", "kband", "lband", "mband"],
-    #     ylims={"t3": [-15, 15]},
-    #     savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
-    # )
-    # zoom = 5
+    plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
+    plot_overview(
+        bands=["nband"],
+        savefig=(plot_dir / f"overview_nband.{plot_format}"),
+    )
+    plot_overview(
+        bands=["hband", "kband", "lband", "mband"],
+        savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
+    )
+    plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
+    plot_fit(
+        components=components,
+        bands=["nband"],
+        savefig=(plot_dir / f"disc_nband.{plot_format}"),
+    )
+    plot_fit(
+        components=components,
+        bands=["hband", "kband", "lband", "mband"],
+        ylims={"t3": [-15, 15]},
+        savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
+    )
+    zoom = 5
     # plot_components(
     #     components,
     #     dim,
@@ -132,29 +130,30 @@ if __name__ == "__main__":
     #     zoom=zoom,
     #     savefig=plot_dir / "image_nband.png",
     # )
-    # best_fit_parameters(
-    #     labels,
-    #     units,
-    #     theta,
-    #     uncertainties,
-    #     save_as_csv=True,
-    #     savefig=assets_dir / "disc.csv",
-    #     fit_method=OPTIONS.fit.fitter,
-    # )
-    # best_fit_parameters(
-    #     labels,
-    #     units,
-    #     theta,
-    #     uncertainties,
-    #     save_as_csv=False,
-    #     savefig=assets_dir / "disc",
-    #     fit_method=OPTIONS.fit.fitter,
-    # )
+    best_fit_parameters(
+        labels,
+        units,
+        theta,
+        uncertainties,
+        save_as_csv=True,
+        savefig=assets_dir / "disc.csv",
+        fit_method=OPTIONS.fit.fitter,
+    )
+    best_fit_parameters(
+        labels,
+        units,
+        theta,
+        uncertainties,
+        save_as_csv=False,
+        savefig=assets_dir / "disc",
+        fit_method=OPTIONS.fit.fitter,
+    )
 
     max_plots, number = 20, True
     # HACK: Remove that for now as it doesn't work to do it in the functions
     fits_files = [s for s in fits_files if "GRAV" not in s.stem]
     fits_files = [s for s in fits_files if "PION" not in s.stem]
+    fits_files = [s for s in fits_files if "_L_" not in s.stem]
 
     hduls = io.sort(io.read(fits_files), by="date")
     oiplot.plot(
@@ -227,3 +226,5 @@ if __name__ == "__main__":
         color_by="instrument",
         save_dir=plot_dir / "uv_all.png",
     )
+
+    plot_products(dim, wavelengths, components, component_labels, save_dir=plot_dir)

@@ -475,11 +475,29 @@ def plot(
         for ax, key in zip(axarr, plots):
             if key == "uv":
                 args = (ax, hduls)
-            # TODO: Implement this
+                getattr(module, f"plot_{key}")(*args, **kwargs)
             else:
-                ...
-
-            getattr(module, f"plot_{key}")(*args, **kwargs)
+                for hdul in hduls:
+                    val_key, err_key = CARD_KEYS[key]
+                    card_key = key if key != "visphi" else "vis"
+                    x = io.get_column(hdul, "oi_wavelength", "eff_wave")
+                    y = io.get_column(hdul, f"oi_{card_key}", val_key, masked=True)
+                    yerr = io.get_column(hdul, f"oi_{card_key}", err_key, masked=True)
+                    sta_index = io.get_column(hdul, f"oi_{card_key}", "sta_index")
+                    sta_index_to_name = dict(
+                        zip(
+                            io.get_column(hdul, "oi_array", "sta_index").tolist(),
+                            io.get_column(hdul, "oi_array", "sta_name"),
+                        )
+                    )
+                    label = list(
+                        map(
+                            lambda x: "-".join(x),
+                            np.vectorize(sta_index_to_name.get)(sta_index),
+                        )
+                    )
+                    args = (ax, x, y, yerr, label)
+                    getattr(module, f"plot_{key}")(*args, **kwargs)
 
     # TODO: Implement the individual plots again
     else:
@@ -494,3 +512,15 @@ def plot(
         plt.show()
 
     plt.close()
+
+
+if __name__ == "__main__":
+    path = Path().home() / "Data" / "supervision" / "amira"
+    plots = ["flux", "t3", "vis2", "vis", "visphi"]
+    for fits_file in path.glob("*.fits"):
+        plot(
+            fits_file,
+            kind="combined",
+            plots=plots,
+            save_dir=path / f"{fits_file.stem}.png",
+        )

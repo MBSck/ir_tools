@@ -1,5 +1,5 @@
 [project]
-name = "ir-tools"
+name = "ir_tools"
 version = "1.0.0"
 description = "A collection of tools used to work with interferometric data."
 requires-python = ">=3.10"
@@ -48,7 +48,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["ir-tools*"]
+include = ["ir_tools*"]
 
 [tool.uv]
 dev-dependencies = [
@@ -67,4 +67,4 @@ ppdmod = { path = "../ppdmod", editable = true }
 matadrs = { path = "../matadrs", editable = true }
 
 [project.urls]
-repository = "https://github.com/MBSck/ir-tools"
+repository = "https://github.com/MBSck/ir_tools"
