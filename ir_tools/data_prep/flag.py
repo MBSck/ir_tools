@@ -10,7 +10,7 @@ from astropy.table import Table
 from tqdm import tqdm
 
 
-def add_flags(hdul: fits.BinTableHDU, index: int | None = None) -> fits.BinTableHDU:
+def add(hdul: fits.BinTableHDU, index: int | None = None) -> fits.BinTableHDU:
     """Adds missing flag columns to files."""
     for key in ["oi_flux", "oi_vis", "oi_vis2", "oi_t3"]:
         if key in hdul:
@@ -34,7 +34,7 @@ def add_flags(hdul: fits.BinTableHDU, index: int | None = None) -> fits.BinTable
     return hdul
 
 
-def flag_gravity_tracker(fits_file: Path, save_dir: Path) -> None:
+def gravity_tracker(fits_file: Path, save_dir: Path) -> None:
     """Flags a GRAVITY file to remove the first tracker (index=20) wavelength as it is incorrect."""
     flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
     shutil.copy(fits_file, flagged_fits)
@@ -44,12 +44,12 @@ def flag_gravity_tracker(fits_file: Path, save_dir: Path) -> None:
                 if "FLAG" in hdul[key, 20].columns.names:
                     hdul[key, 20].data["flag"][:, 0] = True
                 else:
-                    hdul = add_flags(hdul, 20)
+                    hdul = add(hdul, 20)
 
         hdul.flush()
 
 
-def flag_baseline(
+def baseline(
     hdu: fits.BinTableHDU,
     wavelengths: List[float],
     baselines_with_flag_range: Dict[str, List[float]],
@@ -79,7 +79,7 @@ def flag_baseline(
     hdu.data["flag"] = flag
 
 
-def flag_wavelength_range(
+def wavelength_range(
     hdu: fits.BinTableHDU,
     wavelengths: List[float],
     flag_ranges: List[Tuple[float, float]],
@@ -125,7 +125,7 @@ def remove_baselines(
             hdu.data[index]["flag"] = np.ones_like(hdu.data[index]["flag"])
 
 
-def flag_oifits(fits_file: Path, flagging_rules: Dict, save_dir: Path) -> None:
+def oifits(fits_file: Path, flagging_rules: Dict, save_dir: Path) -> None:
     """Flags a fits file for a certain wavelength range or baselines.
 
     Parameters
@@ -145,7 +145,7 @@ def flag_oifits(fits_file: Path, flagging_rules: Dict, save_dir: Path) -> None:
                 if hdu.header.get("extname") == extension.upper():
                     if "keep_wavelengths" in rules:
                         reflag = rules["reflag"] if "reflag" in rules else False
-                        flag_wavelength_range(
+                        wavelength_range(
                             hdu, wavelengths, rules["keep_wavelengths"], reflag
                         )
 
@@ -167,17 +167,17 @@ if __name__ == "__main__":
         flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
         shutil.copy(fits_file, flagged_fits)
         with fits.open(flagged_fits, "update") as hdul:
-            hdul = add_flags(hdul)
+            hdul = add(hdul)
             hdul.flush()
 
     for fits_file in tqdm(list(path.glob("GRAV*")), desc="Flagging GRAVITY..."):
-        flag_gravity_tracker(fits_file, save_dir)
+        gravity_tracker(fits_file, save_dir)
 
     with open(path / "flagging.yaml", "r") as f:
         data = yaml.safe_load(f)
 
     for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging MATISSE..."):
-        flag_oifits((path / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
+        oifits((path / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
 
     with open(path / "flagging_downsampled.yaml", "r") as f:
         data = yaml.safe_load(f)
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     for fits_file, flagging_rules in tqdm(
         data.items(), desc="Flagging MATISSE downsampled..."
     ):
-        flag_oifits(
+        oifits(
             (save_dir.parent / "downsampled" / fits_file).with_suffix(".fits"),
             flagging_rules,
             save_dir,
