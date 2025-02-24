@@ -10,8 +10,8 @@ from matplotlib import colormaps as mcm
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap
 from numpy.typing import NDArray
+from tqdm import tqdm
 
-# from tqdm import tqdm
 from ..utils import get_plot_layout, transform_coordinates
 from . import io
 
@@ -65,9 +65,9 @@ def plot_uv(
     """
     if color_by == "file":
         colors = get_colorlist("tab20", len(hduls))
-        labels = [io.get_header_entry(hdul, "date") for hdul in hduls]
+        labels = [io._get_header_entry(hdul, "date") for hdul in hduls]
     else:
-        instruments = [io.get_header_entry(hdul, "instrument") for hdul in hduls]
+        instruments = [io._get_header_entry(hdul, "instrument") for hdul in hduls]
         labels = []
         for entry in instruments:
             if entry not in labels:
@@ -77,18 +77,18 @@ def plot_uv(
     file_letters = io.get_labels(hduls)
     handles, names, ucoords, vcoords = [], [], [], []
     for index, hdul in enumerate(hduls):
-        x = io.get_column(hdul, "oi_vis2", "ucoord")
-        y = io.get_column(hdul, "oi_vis2", "vcoord")
+        x = io._get_column(hdul, "oi_vis2", "ucoord")
+        y = io._get_column(hdul, "oi_vis2", "vcoord")
         names.extend([f"{file_letters[index]}.{i + 1}" for i in np.arange(x.size)])
         ucoords.extend(x)
         vcoords.extend(y)
 
         if isinstance(colors, dict):
-            instrument = io.get_header_entry(hdul, "instrument")
+            instrument = io._get_header_entry(hdul, "instrument")
             color = colors[instrument]
         else:
             color = colors[index]
-            label = io.get_header_entry(hdul, "date")
+            label = io._get_header_entry(hdul, "date")
 
         line = ax.plot(
             x,
@@ -150,7 +150,7 @@ def plot_uv(
 
 
 # TODO: Include this in the plot class of this module
-def plot_vs_spf(
+def vs_spf(
     files_or_hduls: Path | fits.HDUList | List[Path] | List[fits.HDUList],
     band: str,
     observable: str = "vis",
@@ -178,6 +178,14 @@ def plot_vs_spf(
         The maximal number of plots to show.
     number : bool, optional
         If the plots should be numbered.
+    transparent : bool, optional
+        If the plots should be transparent.
+    model_func : callable, optional
+        The model function to calculate the observable for.
+        Needs to takes as arguments the u and v coordinates and the wavelength.
+        It needs to return the combined visibilities/correlated fluxes, the individual
+        component names as well as the complex visibilities of the individual components.
+        #TODO: Also relay the shapes here the arrays have to be in.
     save_dir : Path, optional
         The save directory for the plots.
     """
@@ -185,38 +193,42 @@ def plot_vs_spf(
     file_letter = io.get_labels(hduls)
 
     wls, stations, labels = [], [], []
-    vals, errs, spfs, psis, model_vals = [], [], [], [], []
+    vals, errs, spfs, psis = [], [], [], []
+    model_vals, model_comp_vals, model_comp_labels = [], [], []
     for index, hdul in enumerate(hduls):
         val_key, err_key = CARD_KEYS[observable]
         card_key = observable if observable != "visphi" else "vis"
-        val = io.get_column(hdul, f"oi_{card_key}", val_key, masked=True)
-        err = io.get_column(hdul, f"oi_{card_key}", err_key, masked=True)
+        val = io._get_column(hdul, f"oi_{card_key}", val_key, masked=True)
+        err = io._get_column(hdul, f"oi_{card_key}", err_key, masked=True)
         label = [f"{file_letter[index]}.{i + 1}" for i in range(val.shape[0])]
-        sta_index = io.get_column(hdul, f"oi_{card_key}", "sta_index")
+        sta_index = io._get_column(hdul, f"oi_{card_key}", "sta_index")
         sta_index_to_name = dict(
             zip(
-                io.get_column(hdul, "oi_array", "sta_index").tolist(),
-                io.get_column(hdul, "oi_array", "sta_name"),
+                io._get_column(hdul, "oi_array", "sta_index").tolist(),
+                io._get_column(hdul, "oi_array", "sta_name"),
             )
         )
         station = list(
             map(lambda x: "-".join(x), np.vectorize(sta_index_to_name.get)(sta_index))
         )
         wls.extend(
-            [io.get_column(hdul, "oi_wavelength", "eff_wave") for _ in range(len(val))]
+            [io._get_column(hdul, "oi_wavelength", "eff_wave") for _ in range(len(val))]
         )
         if observable in ["vis", "vis2", "visphi"]:
-            x = io.get_column(hdul, f"oi_{card_key}", "ucoord")
-            y = io.get_column(hdul, f"oi_{card_key}", "vcoord")
+            x = io._get_column(hdul, f"oi_{card_key}", "ucoord")
+            y = io._get_column(hdul, f"oi_{card_key}", "vcoord")
             if model_func is not None:
-                model_vals.extend(model_func(x, y, wls[-1]))
+                model_val, model_comp_val, model_comp_label = model_func(x, y, wls[-1])
+                model_vals.extend(model_val)
+                model_comp_vals.extend(model_comp_val)
+                model_comp_labels.extend(model_comp_label)
 
         if observable == "t3":
             x1, x2 = map(
-                lambda x: io.get_column(hdul, "oi_t3", x), ["u1coord", "u2coord"]
+                lambda x: io._get_column(hdul, "oi_t3", x), ["u1coord", "u2coord"]
             )
             y1, y2 = map(
-                lambda x: io.get_column(hdul, "oi_t3", x), ["v1coord", "v2coord"]
+                lambda x: io._get_column(hdul, "oi_t3", x), ["v1coord", "v2coord"]
             )
             x123, y123 = np.array([x1, x2, x1 + x2]), np.array([y1, y2, y1 + y2])
             spf = np.hypot(x123, y123)
@@ -248,7 +260,11 @@ def plot_vs_spf(
         np.array(stations)[baseline_ind],
     )
     if model_vals:
-        model_vals = [model_vals[i] for i in baseline_ind]
+        model_vals, model_comp_vals, model_comp_labels = (
+            [model_vals[i] for i in baseline_ind],
+            [model_comp_vals[i] for i in baseline_ind],
+            [model_comp_labels[i] for i in baseline_ind],
+        )
 
     percentile_ind = np.percentile(
         np.arange(len(vals)), np.linspace(0, 100, nplots)
@@ -263,7 +279,11 @@ def plot_vs_spf(
         stations[percentile_ind],
     )
     if model_vals:
-        model_vals = [model_vals[i] for i in baseline_ind]
+        model_vals, model_comp_vals, model_comp_labels = (
+            [model_vals[i] for i in percentile_ind],
+            [model_comp_vals[i] for i in percentile_ind],
+            [model_comp_labels[i] for i in percentile_ind],
+        )
 
     label_colors = np.unique([label.split(".")[0] for label in labels])
     label_colors = dict(zip(label_colors, get_colorlist("tab20", len(label_colors))))
@@ -303,6 +323,18 @@ def plot_vs_spf(
                 label="Model",
             )
 
+            line_styles = ["--", "-.", ":"]
+            for comp_val, comp_label, line_style in zip(
+                model_comp_vals[index], model_comp_labels[index], line_styles
+            ):
+                ax.plot(
+                    wls[index],
+                    comp_val,
+                    color="k",
+                    label=comp_label,
+                    linestyle=line_style,
+                )
+
         if number:
             ax.text(
                 0.05,
@@ -321,10 +353,10 @@ def plot_vs_spf(
 
     if observable == "vis":
         y_label = r"$F_{\nu,\,\mathrm{corr.}}$ (Jy)"
-        ylims[0] = 0
+        ylims[0] = None
     elif observable == "vis2":
         y_label = r"$V^2$ (a.u.)"
-        ylims = [0, 1]
+        ylims = [None, 1]
     elif observable == "visphi":
         y_label = r"$\phi_{\mathrm{diff.}}$ ($^\circ$)"
     elif observable == "t3":
@@ -439,20 +471,20 @@ def plot(
         )
         for row_index, row in enumerate(axarr):
             hdul = hduls[row_index]
-            x = io.get_column(hdul, "oi_wavelength", "eff_wave")
+            x = io._get_column(hdul, "oi_wavelength", "eff_wave")
             for ax, key in zip(row, plots):
                 if key == "uv":
                     args = (ax, [hdul])
                 else:
                     val_key, err_key = CARD_KEYS[key]
                     card_key = key if key != "visphi" else "vis"
-                    y = io.get_column(hdul, f"oi_{card_key}", val_key, masked=True)
-                    yerr = io.get_column(hdul, f"oi_{card_key}", err_key, masked=True)
-                    sta_index = io.get_column(hdul, f"oi_{card_key}", "sta_index")
+                    y = io._get_column(hdul, f"oi_{card_key}", val_key, masked=True)
+                    yerr = io._get_column(hdul, f"oi_{card_key}", err_key, masked=True)
+                    sta_index = io._get_column(hdul, f"oi_{card_key}", "sta_index")
                     sta_index_to_name = dict(
                         zip(
-                            io.get_column(hdul, "oi_array", "sta_index").tolist(),
-                            io.get_column(hdul, "oi_array", "sta_name"),
+                            io._get_column(hdul, "oi_array", "sta_index").tolist(),
+                            io._get_column(hdul, "oi_array", "sta_name"),
                         )
                     )
                     label = list(
@@ -480,14 +512,14 @@ def plot(
                 for hdul in hduls:
                     val_key, err_key = CARD_KEYS[key]
                     card_key = key if key != "visphi" else "vis"
-                    x = io.get_column(hdul, "oi_wavelength", "eff_wave")
-                    y = io.get_column(hdul, f"oi_{card_key}", val_key, masked=True)
-                    yerr = io.get_column(hdul, f"oi_{card_key}", err_key, masked=True)
-                    sta_index = io.get_column(hdul, f"oi_{card_key}", "sta_index")
+                    x = io._get_column(hdul, "oi_wavelength", "eff_wave")
+                    y = io._get_column(hdul, f"oi_{card_key}", val_key, masked=True)
+                    yerr = io._get_column(hdul, f"oi_{card_key}", err_key, masked=True)
+                    sta_index = io._get_column(hdul, f"oi_{card_key}", "sta_index")
                     sta_index_to_name = dict(
                         zip(
-                            io.get_column(hdul, "oi_array", "sta_index").tolist(),
-                            io.get_column(hdul, "oi_array", "sta_name"),
+                            io._get_column(hdul, "oi_array", "sta_index").tolist(),
+                            io._get_column(hdul, "oi_array", "sta_name"),
                         )
                     )
                     label = list(
@@ -515,9 +547,9 @@ def plot(
 
 
 if __name__ == "__main__":
-    path = Path().home() / "Data" / "supervision" / "amira"
-    plots = ["flux", "t3", "vis2", "vis", "visphi"]
-    for fits_file in path.glob("*.fits"):
+    path = Path().home() / "Data" / "reduced" / "HD_142527" / "matisse"
+    plots = ["t3", "vis", "visphi"]
+    for fits_file in tqdm(list(path.glob("*.fits")), desc="Plotting..."):
         plot(
             fits_file,
             kind="combined",

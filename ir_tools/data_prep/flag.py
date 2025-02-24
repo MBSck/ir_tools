@@ -136,7 +136,11 @@ def oifits(fits_file: Path, flagging_rules: Dict, save_dir: Path) -> None:
     wavelenght_range : list of float
         A wavelength range to be flagged.
     """
-    flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
+    if save_dir.is_dir():
+        flagged_fits = save_dir / fits_file.name
+    else:
+        flagged_fits = save_dir
+
     shutil.copy(fits_file, flagged_fits)
     with fits.open(flagged_fits, mode="update") as hdul:
         wavelengths = (hdul["oi_wavelength"].data["eff_wave"] * u.m).to(u.um).value

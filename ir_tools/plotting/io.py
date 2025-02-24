@@ -11,10 +11,10 @@ KEY_TO_ATTRIBUTE = {
     "instrument": "instrume",
 }
 
-
 def read(
     files_or_hduls: Path | fits.HDUList | List[Path] | List[fits.HDUList],
 ) -> List[fits.HDUList]:
+    """Reads a list of fits files into hduls and copies them (skips already opened hduls)."""
     if not isinstance(files_or_hduls, (tuple, list, np.ndarray)):
         files_or_hduls = [files_or_hduls]
 
@@ -34,7 +34,7 @@ def sort(hduls: List[fits.HDUList], by: str | List[str]) -> List[fits.HDUList]:
     by = [by] if not isinstance(by, (tuple, list, np.ndarray)) else by
     data = {
         "index": range(len(hduls)),
-        **{key: [get_header_entry(hdul, key) for hdul in hduls] for key in by},
+        **{key: [_get_header_entry(hdul, key) for hdul in hduls] for key in by},
     }
     return [hduls[i] for i in pd.DataFrame(data).sort_values(by=by)["index"].tolist()]
 
@@ -45,7 +45,7 @@ def filter(hduls: List[fits.HDUList], conditions: Dict[str, Any]) -> List[fits.H
             "index": range(len(hduls)),
             **{
                 key: [
-                    get_header_entry(hdul, key)
+                    _get_header_entry(hdul, key)
                     for key in conditions.keys()
                     for hdul in hduls
                 ]
@@ -59,14 +59,16 @@ def filter(hduls: List[fits.HDUList], conditions: Dict[str, Any]) -> List[fits.H
     return [hduls[i] for i in df["index"].tolist()]
 
 
-def get_header_entry(hdul: List[fits.HDUList], key: str) -> List[str]:
+# TODO: Write these into the get
+def _get_header_entry(hdul: List[fits.HDUList], key: str) -> List[str]:
     content = hdul[0].header.get(KEY_TO_ATTRIBUTE.get(key, key).upper(), "")
     if key == "date":
         content = content.split("T")[0]
     return content
 
 
-def get_hdu(
+# TODO: Write these into the get
+def _get_hdu(
     hdul: fits.HDUList, name: str, index: int | None
 ) -> fits.BinTableHDU | None:
     try:
@@ -75,14 +77,15 @@ def get_hdu(
         return None
 
 
-def get_column(
+# TODO: Write these into the get
+def _get_column(
     hdul: fits.HDUList,
     card: str,
     column: str,
     index: int | None = None,
     masked: bool = False,
 ) -> Any:
-    hdu = get_hdu(hdul, card, index)
+    hdu = _get_hdu(hdul, card, index)
     try:
         values = hdu.data[column]
         if masked:
@@ -90,6 +93,36 @@ def get_column(
         return values
     except (AttributeError, KeyError):
         return None
+
+
+# TODO: Finish this
+def get(hdul: fits.HDUList, key: str) -> Any:
+    """Returns the value of the keyword in the header.
+
+    Parameters
+    ----------
+    key : str
+        Can be any (case-insensitve ) OIFITS2 keyword (e.g. "OI_VIS", "VISAMP") or 
+        a combination in the following way "OI_VIS.header.<header_key>",
+        "OI_VIS.VISAMP", etc.
+    """
+    ...
+
+
+# TODO: Finish this
+def set(hdul: fits.HDUList, key: str, value: Any) -> None:
+    """Sets arrays or units for the keyword in the header.
+
+    Parameters
+    ----------
+    key : str
+        Can be any (case-insensitve ) OIFITS2 keyword (e.g. "OI_VIS", "VISAMP") or 
+        a combination in the following way "OI_VIS.header.<header_key>",
+        "OI_VIS.VISAMP", etc.
+    value : any
+        The value to be set.
+    """
+    ...
 
 
 def get_labels(hduls: List[fits.HDUList]) -> List[str]:

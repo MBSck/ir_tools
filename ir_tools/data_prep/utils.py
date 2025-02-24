@@ -1,18 +1,19 @@
 import shutil
 from pathlib import Path
+from typing import List
 
 import numpy as np
 from astropy.io import fits
 from uncertainties import unumpy
 
-if __name__ == "__main__":
+
+# TODO: Exchange this all here with the io library that I am writing
+def average_flux(fits_files: List[Path]):
     new_fits = None
     wavelengths, fluxes, errors = [], [], []
-    for fits_file in list(
-        (Path().home() / "Data" / "fitting_data" / "hd142527").glob("*_N_*.fits")
-    ):
+    for fits_file in fits_files:
         if new_fits is None:
-            new_fits = "HD_142527_N_AVERAGE_SED.fits"
+            new_fits = "averaged_flux.fits"
             shutil.copy(fits_file, new_fits)
 
         with fits.open(fits_file) as hdul:

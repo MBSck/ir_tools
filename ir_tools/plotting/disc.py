@@ -39,8 +39,8 @@ def ptform():
 
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    path = data_dir / "results" / "disc" / "2025-02-20"
-    path /= "all_matisse_three_zones"
+    path = data_dir / "results" / "disc" / "2025-02-24"
+    path /= "no_asymmetry_non_centred_outer"
 
     plot_dir, assets_dir = path / "plots", path / "assets"
     plot_dir.mkdir(exist_ok=True, parents=True)
