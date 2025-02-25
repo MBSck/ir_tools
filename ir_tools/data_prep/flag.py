@@ -164,33 +164,26 @@ def oifits(fits_file: Path, flagging_rules: Dict, save_dir: Path) -> None:
 
 
 if __name__ == "__main__":
-    path = Path().home() / "Data" / "fitting" / "hd142527" / "non_treated"
-    save_dir = path.parent / "treated" / "flagged"
+    data_dir = Path().home() / "Data"
+    matisse_dir = data_dir / "reduced" / "HD_142527" / "matisse"
+    flagged_dir = matisse_dir / "treated" / "flagged"
 
-    for fits_file in tqdm(list(path.glob("PION*")), desc="Flagging PIONIER..."):
-        flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
-        shutil.copy(fits_file, flagged_fits)
-        with fits.open(flagged_fits, "update") as hdul:
-            hdul = add(hdul)
-            hdul.flush()
+    # TODO: Do this properly from the beginning (with the flux calibration and all)
+    # for fits_file in tqdm(list(path.glob("PION*")), desc="Flagging PIONIER..."):
+    #     flagged_fits = save_dir / f"{fits_file.stem}_FLAG.fits"
+    #     shutil.copy(fits_file, flagged_fits)
+    #     with fits.open(flagged_fits, "update") as hdul:
+    #         hdul = add(hdul)
+    #         hdul.flush()
+    #
+    # for fits_file in tqdm(list(path.glob("GRAV*")), desc="Flagging GRAVITY..."):
+    #     gravity_tracker(fits_file, save_dir)
 
-    for fits_file in tqdm(list(path.glob("GRAV*")), desc="Flagging GRAVITY..."):
-        gravity_tracker(fits_file, save_dir)
-
-    with open(path / "flagging.yaml", "r") as f:
+    with open(flagged_dir / "config.yaml", "r") as f:
         data = yaml.safe_load(f)
 
-    for fits_file, flagging_rules in tqdm(data.items(), desc="Flagging MATISSE..."):
-        oifits((path / fits_file).with_suffix(".fits"), flagging_rules, save_dir)
-
-    with open(path / "flagging_downsampled.yaml", "r") as f:
-        data = yaml.safe_load(f)
-
-    for fits_file, flagging_rules in tqdm(
-        data.items(), desc="Flagging MATISSE downsampled..."
-    ):
-        oifits(
-            (save_dir.parent / "downsampled" / fits_file).with_suffix(".fits"),
-            flagging_rules,
-            save_dir,
-        )
+    for op_dir, fits_files in data.items():
+        for fits_file, flagging_rules in tqdm(
+            fits_files.items(), desc="Flagging MATISSE..."
+        ):
+            oifits(matisse_dir / op_dir / fits_file, flagging_rules, flagged_dir)
