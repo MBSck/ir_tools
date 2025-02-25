@@ -45,8 +45,7 @@ def get_colorlist(colormap: str, ncolors: int | None) -> List[str]:
     return [get_colormap(colormap)(i) for i in range(ncolors)]
 
 
-# TODO: Reimplement individual uv plots (for a certain index)
-def plot_uv(
+def _uv(
     ax: Axes,
     hduls: List[fits.HDUList],
     color_by: str = "file",
@@ -382,60 +381,61 @@ def vs_spf(
     plt.close()
 
 
-def plot_data(
+def _data(
     ax: Axes,
     x: NDArray[Any],
     ys: NDArray[Any],
     yerrs: NDArray[Any],
     label: str | None = None,
+    linestyle: str | None = None,
     **kwargs,
 ) -> Axes:
     """Plots some data with errors."""
     for y, yerr in zip(ys, yerrs):
-        ax.plot(x, y, label=label)
+        ax.plot(x, y, label=label, linestyle=linestyle)
         ax.fill_between(x, y + yerr, y - yerr, alpha=0.2)
     return ax
 
 
-def plot_flux(*args, **kwargs) -> Axes:
+def _flux(*args, **kwargs) -> Axes:
     """Macro of ".plot_data" for the flux."""
-    ax = plot_data(*args, **kwargs)
+    ax = _data(*args, **kwargs)
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$F_{\nu}$ $\left(\mathrm{Jy}\right)$")
     ax.set_ylim(bottom=0)
     return ax
 
 
-def plot_vis(*args, **kwargs) -> Axes:
+def _vis(*args, **kwargs) -> Axes:
     """Macro of ".plot_data" for the visibilites/correlated fluxes."""
     """Plots the visibility or the correlated flux."""
-    ax = plot_data(*args, **kwargs)
+    ax = _data(*args, **kwargs)
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$F_{\nu,\,\mathrm{corr}}$ $\left(\mathrm{Jy}\right)$")
     ax.set_ylim(bottom=0)
     return ax
 
 
-def plot_visphi(*args, **kwargs) -> Axes:
+def _visphi(*args, **kwargs) -> Axes:
     """Macro of ".plot_data" for the differential phases."""
-    ax = plot_data(*args, **kwargs)
+    ax = _data(*args, **kwargs)
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$\phi_{\mathrm{diff}}$ $\left(^\circ\right)$")
     return ax
 
 
-def plot_vis2(*args, **kwargs) -> Axes:
+def _vis2(*args, **kwargs) -> Axes:
     """Macro of ".plot_data" for the squared visibilities."""
-    ax = plot_data(*args, **kwargs)
+    ax = _data(*args, **kwargs)
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$V^{2}$ (a.u.)")
     ax.set_ylim(bottom=0, top=1)
     return ax
 
 
-def plot_t3(*args, **kwargs) -> Axes:
+def _t3(*args, **kwargs) -> Axes:
     """Macro of ".plot_data" for the closure phases."""
-    ax = plot_data(*args, **kwargs)
+    ax = _data(*args, **kwargs)
     ax.set_xlabel(r"$\lambda$ $\left(\mathrm{\mu}m\right)$")
     ax.set_ylabel(r"$\phi_{\mathrm{cp}}$ $\left(^\circ\right)$")
     return ax
@@ -495,7 +495,7 @@ def plot(
                     )
                     args = (ax, x, y, yerr, label)
 
-                getattr(module, f"plot_{key}")(*args, **kwargs)
+                getattr(module, f"_{key}")(*args, **kwargs)
 
     elif kind == "combined":
         cols, rows = len(plots), 1
@@ -507,7 +507,7 @@ def plot(
         for ax, key in zip(axarr, plots):
             if key == "uv":
                 args = (ax, hduls)
-                getattr(module, f"plot_{key}")(*args, **kwargs)
+                getattr(module, f"_{key}")(*args, **kwargs)
             else:
                 for hdul in hduls:
                     val_key, err_key = CARD_KEYS[key]
@@ -529,7 +529,7 @@ def plot(
                         )
                     )
                     args = (ax, x, y, yerr, label)
-                    getattr(module, f"plot_{key}")(*args, **kwargs)
+                    getattr(module, f"_{key}")(*args, **kwargs)
 
     # TODO: Implement the individual plots again
     else:
@@ -548,7 +548,8 @@ def plot(
 
 if __name__ == "__main__":
     path = Path().home() / "Data" / "reduced" / "HD_142527" / "matisse"
-    plots = ["t3", "vis", "visphi"]
+    non_treated_dir = path / "non_treated" / "corrected_visphi"
+    plots = ["flux", "t3", "vis", "visphi"]
     for fits_file in tqdm(list(path.glob("*.fits")), desc="Plotting..."):
         plot(
             fits_file,
