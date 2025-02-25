@@ -5,6 +5,7 @@ from typing import Callable, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
 from astropy.io import fits
 from astropy.table import Table
 from scipy.interpolate import interp1d
@@ -141,7 +142,7 @@ def downsample(
     For downsampling N band turn of use of flagging. For L band have it on.
     """
     save_dir.mkdir(exist_ok=True, parents=True)
-    downsampled_fits = save_dir / f"{fits_to_downsample.stem}_DOWNSAMP.fits"
+    downsampled_fits = save_dir / f"{fits_to_downsample.stem}.fits"
     shutil.copy(fits_to_downsample, downsampled_fits)
 
     keys = []
@@ -312,24 +313,18 @@ def downsample(
 
 
 if __name__ == "__main__":
-    fits_dir = Path().home() / "Data" / "fitting" / "hd142527"
-    low_res_fits = list((fits_dir / "non_treated").glob("*2022-03-23*_N_*"))[0]
-    fits_file = list((fits_dir / "non_treated").glob("*2021-03-27*_N_*"))[0]
-    downsample(
-        fits_dir / "treated" / "downsampled",
-        fits_file,
-        low_res_fits,
-        use_flags=False,
-        do_plot=True,
-    )
+    matisse_dir = Path().home() / "Data" / "reduced" / "HD_142527" / "matisse"
+    non_treated_dir = matisse_dir / "non_treated"
+    downsample_dir = matisse_dir / "treated" / "downsampled"
+    with open(downsample_dir / "config.yaml", "r") as f:
+        data = yaml.safe_load(f)
 
-    low_res_fits = list((fits_dir / "non_treated").glob("*2022-03-23*_L_*"))[0]
-    fits_files = list((fits_dir / "non_treated" / "to_downsample").glob("*fits"))
-    for fits_file in tqdm(fits_files, desc="Downsampling files..."):
-        downsample(
-            fits_dir / "treated" / "downsampled",
-            fits_file,
-            low_res_fits,
-            use_flags=True,
-            do_plot=True,
-        )
+    for low_res_fits, fits_files in data.items():
+        for fits_file in tqdm(fits_files, desc="Downsampling..."):
+            downsample(
+                downsample_dir,
+                non_treated_dir / fits_file,
+                non_treated_dir / low_res_fits,
+                use_flags=False,
+                do_plot=True,
+            )
