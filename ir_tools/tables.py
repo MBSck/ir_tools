@@ -147,19 +147,20 @@ def best_fit_parameters(
     """Make a (.pdf) file containing a table of the fit parameters."""
     labels, units = format_labels(labels, units, split=True)
     if uncertainties is not None:
-        if fit_method == "emcee":
-            uncertainties = uncertainties.T
+        new_values = []
+        for value, uncertainty in zip(values, uncertainties):
+            if value < 1e-2:
+                value = f"{value:.2e}" 
+                uncertainty = f"_{{-{uncertainty[0]:.2e}}}^{{+{uncertainty[1]:.2e}}}"
+            else:
+                value = f"{value:.2f}" 
+                uncertainty = f"_{{-{uncertainty[0]:.2f}}}^{{+{uncertainty[1]:.2f}}}"
 
-        uncertainties = np.round(np.abs(uncertainties - values[:, np.newaxis]), 2)
-
-    values = [
-        f"{value:.2e}" if np.abs(value) < 1e-2 else f"{value:.2f}" for value in values
-    ]
-
-    if uncertainties is not None:
+            new_values.append(f"${{{value}}}{{{uncertainty}}}$")
+        values = new_values
+    else:
         values = [
-            f"${{{value}}}_{{-{uncertainty[0]}}}^{{+{uncertainty[1]}}}$"
-            for value, uncertainty in zip(values, uncertainties)
+            f"{value:.2e}" if np.abs(value) < 1e-2 else f"{value:.2f}" for value in values
         ]
 
     if save_as_csv:
@@ -288,6 +289,7 @@ def source_info(
     data_dir: Path, sources: List[str], save_dir: Path | None = None
 ) -> None:
     save_dir = Path().cwd() if save_dir is None else save_dir
+
     def sorting_key(row) -> int:
         if row["band"] == "LM":
             if row["chopped"]:
@@ -310,7 +312,9 @@ def source_info(
 
             with fits.open(fits_file) as hdul:
                 header = hdul[0].header
-                array = var.ARRAY_CONFIGS.get("-".join(hdul["oi_array"].data["sta_name"]), "other")
+                array = var.ARRAY_CONFIGS.get(
+                    "-".join(hdul["oi_array"].data["sta_name"]), "other"
+                )
 
             info["source"].append(source)
             tpl_start = header["HIERARCH ESO TPL START"]
