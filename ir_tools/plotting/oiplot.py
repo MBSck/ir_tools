@@ -233,6 +233,12 @@ def vs_spf(
                 lambda x: io._get_column(hdul, "oi_t3", x), ["v1coord", "v2coord"]
             )
             x123, y123 = np.array([x1, x2, x1 + x2]), np.array([y1, y2, y1 + y2])
+            if model_func is not None:
+                model_val, model_comp_val, model_comp_label = model_func(x123, y123, wls[-1])
+                model_vals.extend(model_val)
+                model_comp_vals.extend(model_comp_val)
+                model_comp_labels.extend(model_comp_label)
+
             spf = np.hypot(x123, y123)
             longest_ind = (
                 np.arange(spf.T.shape[0]),
@@ -262,8 +268,8 @@ def vs_spf(
         np.array(stations)[baseline_ind],
     )
     if model_vals:
-        model_vals, model_comp_vals, model_comp_labels = (
-            [model_vals[i] for i in baseline_ind],
+        model_vals = [model_vals[i] for i in baseline_ind]
+        model_comp_vals, model_comp_labels = (
             [model_comp_vals[i] for i in baseline_ind],
             [model_comp_labels[i] for i in baseline_ind],
         )
@@ -281,8 +287,8 @@ def vs_spf(
         stations[percentile_ind],
     )
     if model_vals:
-        model_vals, model_comp_vals, model_comp_labels = (
-            [model_vals[i] for i in percentile_ind],
+        model_vals = [model_vals[i] for i in percentile_ind]
+        model_comp_vals, model_comp_labels = (
             [model_comp_vals[i] for i in percentile_ind],
             [model_comp_labels[i] for i in percentile_ind],
         )
@@ -325,17 +331,18 @@ def vs_spf(
                 label="Model",
             )
 
-            linestyles = ["--", "-.", ":"]
-            for comp_val, comp_label, line_style in zip(
-                model_comp_vals[index], model_comp_labels[index], linestyles
-            ):
-                ax.plot(
-                    wls[index],
-                    comp_val,
-                    color="k",
-                    label=comp_label,
-                    linestyle=line_style,
-                )
+            if observable != "t3":
+                linestyles = ["--", "-.", ":"]
+                for comp_val, comp_label, line_style in zip(
+                    model_comp_vals[index], model_comp_labels[index], linestyles
+                ):
+                    ax.plot(
+                        wls[index],
+                        comp_val,
+                        color="k",
+                        label=comp_label,
+                        linestyle=line_style,
+                    )
 
         if number:
             ax.text(
