@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import astropy.units as u
-import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler
 from numpy.typing import NDArray
@@ -39,15 +38,17 @@ def ptform():
 
 if __name__ == "__main__":
     data_dir = Path().home() / "Data"
-    path = data_dir / "results" / "disc" / "2025-02-28"
-    path /= "constrained_shift"
-
-    plot_dir, assets_dir = path / "plots", path / "assets"
-    plot_dir.mkdir(exist_ok=True, parents=True)
-    assets_dir.mkdir(exist_ok=True, parents=True)
+    path = data_dir / "results" / "disc" / "2025-03-03"
+    path /= "only_nband_small_err"
 
     fits_dir = data_dir / "fitting" / "hd142527"
     fits_files = list(map(lambda x: fits_dir / x, np.load(path / "files.npy")))
+
+    assets_dir = path / "assets"
+    assets_fit_dir = assets_dir / "fit"
+    assets_data_dir = assets_dir / "data"
+    assets_fit_dir.mkdir(parents=True, exist_ok=True)
+    assets_data_dir.mkdir(parents=True, exist_ok=True)
 
     OPTIONS.fit.fitter = "dynesty"
     OPTIONS.fit.condition = "sequential_radii"
@@ -59,10 +60,7 @@ if __name__ == "__main__":
         wavelengths=wavelengths,
         fit_data=np.load(path / "observables.npy"),
     )
-    if OPTIONS.fit.fitter == "emcee":
-        sampler = emcee.backends.HDFBackend(path / "sampler.h5")
-    else:
-        sampler = DynamicNestedSampler.restore(path / "sampler.save")
+    sampler = DynamicNestedSampler.restore(path / "sampler.save")
 
     theta = np.load(path / "theta.npy")
     uncertainties = np.load(path / "uncertainties.npy")
@@ -90,34 +88,34 @@ if __name__ == "__main__":
     #     units,
     #     savefig=(plot_dir / f"corner.{plot_format}"),
     # )
-    # plot_overview(savefig=(plot_dir / f"overview.{plot_format}"))
-    # plot_overview(
-    #     bands=["nband"],
-    #     savefig=(plot_dir / f"overview_nband.{plot_format}"),
-    # )
-    # plot_overview(
-    #     bands=["hband", "kband", "lband", "mband"],
-    #     savefig=(plot_dir / f"overview_hlkmband.{plot_format}"),
-    # )
-    # plot_fit(components=components, savefig=(plot_dir / f"disc.{plot_format}"))
-    # plot_fit(
-    #     components=components,
-    #     bands=["nband"],
-    #     savefig=(plot_dir / f"disc_nband.{plot_format}"),
-    # )
-    # plot_fit(
-    #     components=components,
-    #     bands=["hband", "kband", "lband", "mband"],
-    #     ylims={"t3": [-15, 15]},
-    #     savefig=(plot_dir / f"disc_hklmband.{plot_format}"),
-    # )
+    plot_overview(savefig=(assets_data_dir / f"overview.{plot_format}"))
+    plot_overview(
+        bands=["nband"],
+        savefig=(assets_data_dir / f"overview_nband.{plot_format}"),
+    )
+    plot_overview(
+        bands=["hband", "kband", "lband", "mband"],
+        savefig=(assets_data_dir / f"overview_hlkmband.{plot_format}"),
+    )
+    plot_fit(components=components, savefig=(assets_fit_dir / f"disc.{plot_format}"))
+    plot_fit(
+        components=components,
+        bands=["nband"],
+        savefig=(assets_fit_dir / f"disc_nband.{plot_format}"),
+    )
+    plot_fit(
+        components=components,
+        bands=["hband", "kband", "lband", "mband"],
+        ylims={"t3": [-15, 15]},
+        savefig=(assets_fit_dir / f"disc_hklmband.{plot_format}"),
+    )
     plot_components(
         components,
         dim,
         0.1,
-        np.linspace(8, 13, 1024),
+        np.linspace(8, 13),
         save_as_fits=True,
-        savefig=plot_dir / "model.fits",
+        savefig=assets_fit_dir / "model.fits",
     )
     best_fit_parameters(
         labels,
@@ -125,7 +123,7 @@ if __name__ == "__main__":
         theta,
         uncertainties,
         save_as_csv=True,
-        savefig=assets_dir / "disc.csv",
+        savefig=assets_fit_dir / "disc.csv",
         fit_method=OPTIONS.fit.fitter,
     )
     best_fit_parameters(
@@ -134,91 +132,91 @@ if __name__ == "__main__":
         theta,
         uncertainties,
         save_as_csv=False,
-        savefig=assets_dir / "disc",
+        savefig=assets_fit_dir / "disc",
         fit_method=OPTIONS.fit.fitter,
     )
 
-    # max_plots, number = 20, True
-    # # HACK: Remove that for now as it doesn't work to do it in the functions
-    # fits_files = [s for s in fits_files if "GRAV" not in s.stem]
-    # fits_files = [s for s in fits_files if "PION" not in s.stem]
-    # fits_files = [s for s in fits_files if "_L_" not in s.stem]
-    #
-    # hduls = io.sort(io.read(fits_files), by="date")
-    # oiplot.plot(
-    #     hduls,
-    #     bands=["nband"],
-    #     kind="combined",
-    #     plots=["uv"],
-    #     number=number,
-    #     save_dir=plot_dir / "uv_uts.png",
-    # )
-    #
-    # def model_func(ucoord, vcoord, wl, components, observable) -> NDArray[Any]:
-    #     ucoord = u.Quantity(np.insert(ucoord, 0, 0), u.m).reshape(1, -1)
-    #     vcoord = u.Quantity(np.insert(vcoord, 0, 0), u.m).reshape(1, -1)
-    #     wl = u.Quantity(wl, u.m).to(u.um)
-    #     complex_vis_comps = np.array(
-    #         [comp.compute_complex_vis(ucoord, vcoord, wl).T for comp in components]
-    #     )
-    #     complex_vis_comps = np.transpose(complex_vis_comps, (1, 0, 2))
-    #     complex_vis = complex_vis_comps.sum(1)
-    #     comp_labels = np.array(
-    #         [[comp.label for _ in range(complex_vis.shape[0])] for comp in components]
-    #     )
-    #
-    #     flux_model = complex_vis[0]
-    #     if OPTIONS.model.output == "normed":
-    #         complex_vis /= flux_model
-    #         complex_vis_comps /= flux_model
-    #
-    #     return compute_vis(complex_vis[1:]), complex_vis_comps[1:].real, comp_labels.T
-    #
-    # bands = ["nband"]
-    # for band in bands:
-    #     # oiplot.vs_spf(
-    #     #     hduls,
-    #     #     band,
-    #     #     "vis",
-    #     #     max_plots=max_plots,
-    #     #     number=number,
-    #     #     save_dir=plot_dir / "vis_vs_spf.png",
-    #     # )
-    #     oiplot.vs_spf(
-    #         hduls,
-    #         band,
-    #         "vis",
-    #         model_func=partial(model_func, components=components, observable="vis"),
-    #         max_plots=max_plots,
-    #         number=number,
-    #         save_dir=plot_dir / "vis_vs_spf_model.png",
-    #     )
-    #     oiplot.vs_spf(
-    #         hduls,
-    #         band,
-    #         "visphi",
-    #         ylims=[-20, 20],
-    #         max_plots=max_plots,
-    #         number=number,
-    #         save_dir=plot_dir / "visphi_vs_spf.png",
-    #     )
-    #     oiplot.vs_spf(
-    #         hduls,
-    #         band,
-    #         "t3",
-    #         ylims=[-20, 55],
-    #         max_plots=max_plots,
-    #         number=number,
-    #         save_dir=plot_dir / "t3_vs_spf.png",
-    #     )
-    #
-    # hduls = io.sort(io.read(list(fits_dir.glob("*.fits"))), by="instrument")
-    # oiplot.plot(
-    #     hduls,
-    #     kind="combined",
-    #     plots=["uv"],
-    #     color_by="instrument",
-    #     save_dir=plot_dir / "uv_all.png",
-    # )
-    #
-    # plot_products(dim, wavelengths, components, component_labels, save_dir=plot_dir)
+    max_plots, number = 20, True
+    # HACK: Remove that for now as it doesn't work to do it in the functions
+    fits_files = [s for s in fits_files if "GRAV" not in s.stem]
+    fits_files = [s for s in fits_files if "PION" not in s.stem]
+    fits_files = [s for s in fits_files if "_L_" not in s.stem]
+
+    hduls = io.sort(io.read(fits_files), by="date")
+    oiplot.plot(
+        hduls,
+        bands=["nband"],
+        kind="combined",
+        plots=["uv"],
+        number=number,
+        save_dir=assets_data_dir / "uv_uts.png",
+    )
+
+    def model_func(ucoord, vcoord, wl, components, observable) -> NDArray[Any]:
+        ucoord = u.Quantity(np.insert(ucoord, 0, 0), u.m).reshape(1, -1)
+        vcoord = u.Quantity(np.insert(vcoord, 0, 0), u.m).reshape(1, -1)
+        wl = u.Quantity(wl, u.m).to(u.um)
+        complex_vis_comps = np.array(
+            [comp.compute_complex_vis(ucoord, vcoord, wl).T for comp in components]
+        )
+        complex_vis_comps = np.transpose(complex_vis_comps, (1, 0, 2))
+        complex_vis = complex_vis_comps.sum(1)
+        comp_labels = np.array(
+            [[comp.label for _ in range(complex_vis.shape[0])] for comp in components]
+        )
+
+        flux_model = complex_vis[0]
+        if OPTIONS.model.output == "normed":
+            complex_vis /= flux_model
+            complex_vis_comps /= flux_model
+
+        return compute_vis(complex_vis[1:]), complex_vis_comps[1:].real, comp_labels.T
+
+    bands = ["nband"]
+    for band in bands:
+        # oiplot.vs_spf(
+        #     hduls,
+        #     band,
+        #     "vis",
+        #     max_plots=max_plots,
+        #     number=number,
+        #     save_dir=plot_dir / "vis_vs_spf.png",
+        # )
+        oiplot.vs_spf(
+            hduls,
+            band,
+            "vis",
+            model_func=partial(model_func, components=components, observable="vis"),
+            max_plots=max_plots,
+            number=number,
+            save_dir=assets_fit_dir / "vis_vs_spf.png",
+        )
+        oiplot.vs_spf(
+            hduls,
+            band,
+            "visphi",
+            ylims=[-20, 20],
+            max_plots=max_plots,
+            number=number,
+            save_dir=assets_data_dir / "visphi_vs_spf.png",
+        )
+        oiplot.vs_spf(
+            hduls,
+            band,
+            "t3",
+            ylims=[-20, 55],
+            max_plots=max_plots,
+            number=number,
+            save_dir=assets_data_dir / "t3_vs_spf.png",
+        )
+
+    hduls = io.sort(io.read(list(fits_dir.glob("*.fits"))), by="instrument")
+    oiplot.plot(
+        hduls,
+        kind="combined",
+        plots=["uv"],
+        color_by="instrument",
+        save_dir=assets_data_dir / "uv_all.png",
+    )
+
+    plot_products(dim, wavelengths, components, component_labels, save_dir=plot_dir)
