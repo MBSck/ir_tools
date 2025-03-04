@@ -50,6 +50,7 @@ def _uv(
     hduls: List[fits.HDUList],
     color_by: str = "file",
     number: bool = False,
+    legend: bool = True,
     **kwargs,
 ) -> Axes:
     """Plots the uv coverage.
@@ -139,7 +140,8 @@ def _uv(
 
     ax.plot([0.0], [0.0], "+k", markersize=4, markeredgewidth=1, alpha=0.5)
     xlabel, ylabel = "$u$ (m) - South", "$v$ (m) - East"
-    ax.legend(handles=handles, fontsize="small")
+    if legend:
+        ax.legend(handles=handles, fontsize="small")
 
     plt.gca().invert_xaxis()
     ax.set_xlabel(xlabel)
@@ -156,6 +158,7 @@ def vs_spf(
     ylims: List[float] | None = None,
     max_plots: int = 20,
     number: bool = False,
+    legend: bool = True,
     transparent: bool = False,
     model_func: Callable | None = None,
     save_dir: Path | None = None,
@@ -322,9 +325,9 @@ def vs_spf(
                 label="Model",
             )
 
-            line_styles = ["--", "-.", ":"]
+            linestyles = ["--", "-.", ":"]
             for comp_val, comp_label, line_style in zip(
-                model_comp_vals[index], model_comp_labels[index], line_styles
+                model_comp_vals[index], model_comp_labels[index], linestyles
             ):
                 ax.plot(
                     wls[index],
@@ -345,7 +348,8 @@ def vs_spf(
                 va="top",
                 ha="left",
             )
-        ax.legend()
+        if legend:
+            ax.legend()
 
     if ylims is None:
         ylims = [ymin - ymin * 0.25, ymax + ymax * 0.25]
@@ -509,7 +513,9 @@ def plot(
                 args = (ax, hduls)
                 getattr(module, f"_{key}")(*args, **kwargs)
             else:
-                for hdul in hduls:
+                # TODO: Make more linestyles so it never cuts the list of hduls
+                linestyles = ["-", "--", "-.", ":"]
+                for linestyle, hdul in zip(linestyles, hduls):
                     val_key, err_key = CARD_KEYS[key]
                     card_key = key if key != "visphi" else "vis"
                     x = io._get_column(hdul, "oi_wavelength", "eff_wave")
@@ -528,6 +534,7 @@ def plot(
                             np.vectorize(sta_index_to_name.get)(sta_index),
                         )
                     )
+                    kwargs["linestyle"] = linestyle
                     args = (ax, x, y, yerr, label)
                     getattr(module, f"_{key}")(*args, **kwargs)
 
@@ -546,14 +553,20 @@ def plot(
     plt.close()
 
 
+# TODO: Do the overplotting here
 if __name__ == "__main__":
-    path = Path().home() / "Data" / "reduced" / "HD_142527" / "matisse"
-    non_treated_dir = path / "non_treated" / "corrected_visphi"
-    plots = ["flux", "t3", "vis", "visphi"]
-    for fits_file in tqdm(list(path.glob("*.fits")), desc="Plotting..."):
+    reduced_dir = Path().home() / "Data" / "reduced"
+    target = "M8E-IR"
+    data_dir = reduced_dir / target / "matisse" / "treated" / "flagged"
+    plot_dir = data_dir / "plots"
+    plot_dir.mkdir(exist_ok=True, parents=True)
+
+    fits_files = list(data_dir.glob("*.fits"))
+    plots = ["flux", "vis2", "t3"]
+    for fits_file in tqdm(fits_files, desc="Plotting..."):
         plot(
             fits_file,
             kind="combined",
             plots=plots,
-            save_dir=path / f"{fits_file.stem}.png",
+            save_dir=plot_dir / f"{fits_file.stem}.png"
         )
