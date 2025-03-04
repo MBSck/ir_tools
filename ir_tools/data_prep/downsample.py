@@ -92,6 +92,7 @@ def replace_columns(
     """
     table = Table(hdu.data)
     for name, value in zip(names, data):
+        value = value.astype(np.float64) if name != "flag" else value.astype(bool)
         table.replace_column(name.upper(), value)
 
     new_hdu = fits.BinTableHDU(data=table, name=hdu.name)
@@ -154,11 +155,11 @@ def downsample(
         if card == "oi_vis":
             keys.append([["visamp", "visamperr"], ["visphi", "visphierr"]])
         if card == "oi_t3":
-            keys.append([["t3phi", "t3phierr"]])
+            keys.append([["t3amp", "t3amperr"], ["t3phi", "t3phierr"]])
 
     axarr = []
     if do_plot:
-        axarr = plt.subplots(len(cards) + 1, 3, figsize=(10, 12))[1]
+        axarr = plt.subplots(len(cards) + 2, 3, figsize=(10, 12))[1]
 
     with fits.open(fits_to_sample_from) as old_hdul:
         wavelengths = old_hdul["oi_wavelength"].data["eff_wave"]
@@ -298,7 +299,8 @@ def downsample(
             axarr[1, 0].set_ylabel(r"$V^2$ (a.u.)")
             axarr[2, 0].set_ylabel("Amplitude")
             axarr[3, 0].set_ylabel(r"$\phi_{\mathrm{diff.}}$ ($^\circ$)")
-            axarr[4, 0].set_ylabel(r"$\phi_{\mathrm{cl.}}$ ($^\circ$)")
+            axarr[4, 0].set_ylabel(r"Amplitude$_{\mathrm{cl.}}$")
+            axarr[5, 0].set_ylabel(r"$\phi_{\mathrm{cl.}}$ ($^\circ$)")
             for index in range(3):
                 axarr[-1, index].set_xlabel(r"$\lambda$ (m)")
 
